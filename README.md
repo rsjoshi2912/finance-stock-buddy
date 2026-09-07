@@ -4,7 +4,11 @@ A private market learning journal for Ravi. Ten daily direction calls, every res
 
 **This is a working local research foundation. It does not place orders, generate validated live investment advice, or promise profits. The default history is synthetic and labelled throughout.**
 
+**Public data:** [PUBLIC_DATA.md](PUBLIC_DATA.md) covers Yahoo prices and ET Markets, LiveMint and RBI news without a broker key. Real-data imports have been verified locally; the news learning model is still pending.
+
 **Live hosting:** [DEPLOYMENT.md](DEPLOYMENT.md) covers the GitHub Pages frontend, authenticated backend, Upstox price adapter, persistent scheduler and private Telegram setup. Integration code is provided; external services need your credentials and server before they can run.
+
+**Prediction knowledge:** [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md) defines the planned news, company-event and historical-reaction layer, including how we will test whether it improves the price-only baseline. This layer is not running yet.
 
 ## Run it
 
@@ -42,7 +46,7 @@ For frontend development, keep the API running and run `npm run dev` in `fronten
 | Baselines | Fixed 0.53 always-up and five-day momentum predictions stored for every instrument with enough history |
 | Optional research | LightGBM walk-forward report with full-session chronological splits; FinBERT CPU function; matched 60-day promotion predicate; atomic token-budget reservation |
 | Delivery | Deterministic Telegram-sized templates, preview endpoints, separate opt-in CLI sending to one allowed chat, duplicate-attempt protection |
-| Live services | Upstox quote/candle adapter, 15-second display snapshots, actual receipt times, exchange-session checks, durable scheduled jobs, bounded retries, verified private-chat delivery |
+| Live services | Selectable Yahoo/Upstox quote/candle adapters, public RSS collection, source-specific display snapshots, actual receipt times, exchange-session checks, durable scheduled jobs, bounded retries, verified private-chat delivery |
 | Hosting | Pages workflow, sign-in and exact-origin API access, Docker Compose/PostgreSQL, Caddy and systemd templates; infrastructure requires setup |
 
 The current displayed rule **is the five-day momentum baseline**, deliberately. Comparing it with always-up provides a working measurement starting point; it is not an ML model with a demonstrated advantage. All extra AI helpers have zero influence until implemented and validated.
@@ -105,7 +109,7 @@ The report requires at least **100 resolved days**: 40 initial training days and
 The following are **not running** and must not be presented as complete:
 
 1. Production verification of the Upstox adapter/calendar and supplied universe, five-year backfill, full historical constituent membership with re-entries, corporate-action reconciliation, and authoritative exchange archive reconciliation.
-2. Global/context feeds, company-event tagging, fundamentals, RSS ingestion, and scheduled FinBERT sentiment.
+2. Global/context feeds, company-event tagging, fundamentals, and scheduled FinBERT sentiment. Public RSS collection is now implemented; it does not yet change predictions.
 3. A configured and evaluated LLM provider; strict per-agent JSON validation and provenance; scored helper weights; automatic safe fallback and actual spend accounting. Token reservation and the future writer contract are supplied, but no provider call is active.
 4. A trained/calibrated champion, weekly retraining and promotion integrated into daily forecasts, reliable event-conditioned scorecards, and validated confidence thresholds.
 5. Deployment of the implemented API/worker schedule, Telegram credentials and actual delivery test, VM provisioning, PostgreSQL startup, private HTTPS, and backups. See DEPLOYMENT.md.
@@ -123,7 +127,7 @@ npm run test:e2e
 
 Browser checks require Google Chrome and the API at port 8000. They exercise page navigation, saved-call details, date and wrong-call filters, stock search, note previews, and responsive layouts. Screenshots are saved to `data/screenshot-desktop.png` and `data/screenshot-mobile.png`.
 
-Verified locally: **45 backend tests passed, 5 browser tests passed, and the production frontend build passed.** The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the two isolated hosted-page checks. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
+Verified locally: **58 backend tests and the two hosted-page browser checks passed after adding public data; the production frontend build passed.** The three original journal browser checks passed in the foundation build. See PUBLIC_DATA.md for real-source verification. The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the two isolated hosted-page checks. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
 
 The frozen ten-day integration fixture expects **−₹150** for the model and **+₹850** for simply buying, with **50 of 100** calls right. This known losing example checks selection, resolution, costs, direction scoring, and message generation through the same functions used by the app.
 

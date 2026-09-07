@@ -1,5 +1,7 @@
 # Live Nifty Signal
 
+For the public-data setup without a broker account, start with [PUBLIC_DATA.md](PUBLIC_DATA.md). Yahoo is now the default provider; Upstox credentials below apply only when selecting `MARKET_DATA_PROVIDER=upstox`.
+
 The frontend can run on GitHub Pages. The API, database, market connection, scheduler and Telegram sender run on an always-on Linux server. Publishing the frontend alone does **not** start those services.
 
 ```mermaid

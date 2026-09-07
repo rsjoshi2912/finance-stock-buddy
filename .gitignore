@@ -11,6 +11,8 @@ graphify-out/
 frontend/.env.*
 !frontend/.env.example
 data/
+!backend/data/
+!backend/data/nse-calendar-2026.json
 .venv/
 __pycache__/
 .pytest_cache/

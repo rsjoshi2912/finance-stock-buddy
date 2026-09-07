@@ -2,7 +2,7 @@
 import argparse
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -10,9 +10,10 @@ from sqlalchemy import select
 
 from .config import MODE
 from .db import initialize, SessionLocal
-from .market import IST, MarketError, Upstox, import_mapping, ingest_daily, market_session, previous_session, refresh_quotes
-from .models import InstrumentMapping, JobRun, Setting
-from .ingest import now
+from .market import IST, MarketError, create_provider, provider_id, mappings, import_mapping, ingest_daily, market_session, previous_session, refresh_quotes
+from .models import InstrumentMapping, Instrument, JobRun, Setting
+from .ingest import now, import_instruments
+from .news import collect_news
 from .scheduler import require_live
 
 def telegram_chats(transport=None):
@@ -54,19 +55,24 @@ def telegram_check(transport=None):
         raise MarketError('Telegram could not be reached. No message was sent.') from None
 
 def doctor(session):
-    required = ['OWNER_PASSWORD', 'UPSTOX_ACCESS_TOKEN', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID', 'FRONTEND_ORIGINS']
+    required = ['OWNER_PASSWORD', 'FRONTEND_ORIGINS']
+    if provider_id() == 'upstox': required.append('UPSTOX_ACCESS_TOKEN')
     configured = {key: bool(os.getenv(key)) for key in required}
-    mappings = len(session.scalars(select(InstrumentMapping.symbol)).all())
+    try: count = len(mappings(session, datetime.now(IST).date().isoformat(), provider_id()))
+    except MarketError: count = 0
     mode = session.get(Setting, 'dataset_mode')
-    ready = MODE == 'live' and all(configured.values()) and mappings >= 10 and (not mode or mode.value == 'live')
-    return {'mode': MODE, 'configured': configured, 'mapped_instruments': mappings,
+    ready = MODE == 'live' and all(configured.values()) and count >= 10 and (not mode or mode.value == 'live')
+    return {'mode': MODE, 'market_provider': provider_id(), 'broker_key_required': provider_id() == 'upstox',
+        'configured': configured, 'mapped_instruments': count,
+        'telegram_configured': bool(os.getenv('TELEGRAM_BOT_TOKEN') and os.getenv('TELEGRAM_CHAT_ID')),
         'telegram_enabled': os.getenv('TELEGRAM_ENABLED') == 'true',
         'configuration_ready': ready, 'external_connections_verified': False}
 
 def main():
     parser = argparse.ArgumentParser(description='Set up Nifty Signal live services')
-    parser.add_argument('command', choices=['doctor', 'import-universe', 'bootstrap', 'quotes', 'telegram-check','telegram-chats'])
+    parser.add_argument('command', choices=['doctor', 'import-universe', 'bootstrap', 'quotes', 'news', 'starter-universe', 'telegram-check','telegram-chats'])
     parser.add_argument('--file')
+    parser.add_argument('--end', help='Last daily candle date to request, inclusive; defaults to the previous verified session.')
     args = parser.parse_args(); initialize()
     if args.command=='telegram-chats': print(json.dumps(telegram_chats(),indent=2)); return
     with SessionLocal() as session:
@@ -82,14 +88,23 @@ def main():
             else: session.add(Setting(key='telegram_verified_chat_id', value=os.environ['TELEGRAM_CHAT_ID']))
         elif args.command == 'import-universe':
             if not args.file: raise MarketError('--file must point to a verified universe CSV.')
-            result = import_mapping(session, Path(args.file).read_text())
+            result = (import_mapping if provider_id() == 'upstox' else import_instruments)(session, Path(args.file).read_text())
+        elif args.command == 'starter-universe':
+            from .public_data import starter_universe
+            result = starter_universe(session)
+        elif args.command == 'news':
+            result = collect_news(session)
         else:
-            provider = Upstox()
+            provider = create_provider()
             try:
                 day = datetime.now(IST).date().isoformat()
-                market_session(session, provider, day, refresh=True)
-                result = (refresh_quotes(session, provider) if args.command == 'quotes'
-                    else ingest_daily(session, provider, previous_session(session, provider, day)))
+                if args.command == 'quotes':
+                    try: market_session(session, provider, day, refresh=True)
+                    except MarketError: pass  # The API explicitly shows unconfirmed hours.
+                    result = refresh_quotes(session, provider)
+                else:
+                    end = args.end or previous_session(session, provider, day)
+                    result = ingest_daily(session, provider, end)
             finally: provider.close()
         session.add(JobRun(job=args.command, status='ok', rows=0, detail=str(result), started_at=now()))
         session.commit(); print(result)

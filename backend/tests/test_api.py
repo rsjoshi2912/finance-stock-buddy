@@ -17,11 +17,12 @@ def client(session):
 def test_pages_read_real_api_data(client):
     data=client.get('/api/today').json()
     assert data['mode']=='demo' and len(data['calls'])==10
-    for endpoint in ['track-record','health','stocks','stocks/RELIANCE','brief/morning','brief/evening']:
+    for endpoint in ['track-record','health','stocks','stocks/RELIANCE','brief/morning','brief/evening','quotes','news']:
         response=client.get('/api/'+endpoint)
         assert response.status_code==200,(endpoint,response.text)
     assert client.get('/api/stocks/UNKNOWN').status_code==404
     assert client.get('/api/export.csv').text.startswith('date,symbol,direction')
+    assert client.get('/api/news').json()['influences_predictions'] is False
 
 def test_backlog_never_changes_model(client,session):
     idea=session.scalar(select(Improvement))

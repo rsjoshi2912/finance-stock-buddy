@@ -15,6 +15,7 @@ from .db import initialize,SessionLocal,session_dependency
 from .demo import seed_demo
 from .models import Improvement,Instrument,Price,Setting
 from .market import quote_snapshot
+from .news import news_snapshot
 
 FRONTEND_ORIGINS=[x.strip().rstrip('/') for x in os.getenv('FRONTEND_ORIGINS','').split(',') if x.strip()]
 if '*' in FRONTEND_ORIGINS:raise ValueError('FRONTEND_ORIGINS must list exact origins, never a wildcard')
@@ -64,6 +65,10 @@ def check_session():
 @app.get('/api/quotes')
 def quotes(session:Session=Depends(session_dependency)):
     return quote_snapshot(session)
+
+@app.get('/api/news')
+def news(session:Session=Depends(session_dependency)):
+    return news_snapshot(session)
 
 @app.get('/api/today')
 def today(date:str|None=None,session:Session=Depends(session_dependency)):

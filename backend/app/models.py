@@ -140,3 +140,18 @@ class ScheduledRun(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[str] = mapped_column(String(32))
     detail: Mapped[str] = mapped_column(Text, default='')
+
+class NewsArticle(Base):
+    """Public feed observations. Revisions never replace an earlier observation."""
+    __tablename__ = 'news_articles'
+    __table_args__ = (UniqueConstraint('url', 'content_hash'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source: Mapped[str] = mapped_column(String(60))
+    url: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(String(2000))
+    content_hash: Mapped[str] = mapped_column(String(64))
+    published_at: Mapped[str] = mapped_column(String(32), index=True)
+    received_at: Mapped[str] = mapped_column(String(32))
+    time_basis: Mapped[str] = mapped_column(String(60))
+    symbols: Mapped[str] = mapped_column(Text, default='[]')

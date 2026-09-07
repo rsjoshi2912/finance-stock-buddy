@@ -18,7 +18,8 @@ from .db import SessionLocal, engine, initialize
 from .engine import cutoff_for, make_daily_calls, resolve_day
 from .ingest import now
 from .jobs import send_telegram
-from .market import IST, MarketError, Upstox, ingest_daily, market_session, previous_session, refresh_quotes
+from .market import IST, MarketError, create_provider, ingest_daily, market_session, previous_session, refresh_quotes
+from .news import collect_news
 from .models import JobRun, Prediction, Resolution, ScheduledRun, Setting
 
 def due_jobs(current, hours):
@@ -117,16 +118,33 @@ def tick(provider, current=None, factory=SessionLocal):
         if heartbeat: heartbeat.value = stamp
         else: session.add(Setting(key='worker_heartbeat', value=stamp))
         session.commit()
-        hours = market_session(session, provider, day)
+        try:
+            hours = market_session(session, provider, day)
+        except MarketError as error:
+            # News and display snapshots can still be collected without claiming that
+            # exchange hours were confirmed. Forecasting/delivery stay blocked.
+            hours = {'date': day, 'open': None, 'close': None}
+            saved = session.get(Setting, 'calendar_warning')
+            previous = json.loads(saved.value) if saved else None
+            if not previous or (current - datetime.fromisoformat(previous['at'])).total_seconds() >= 1800:
+                value = json.dumps({'at': stamp, 'detail': str(error)})
+                if saved: saved.value = value
+                else: session.add(Setting(key='calendar_warning', value=value))
+                session.add(JobRun(job='calendar', status='warning', rows=0, detail=str(error), started_at=stamp))
         # High-frequency quote checks do not need permanent job-history rows.
         expired = (current - timedelta(days=7)).isoformat(timespec='seconds')
         session.execute(delete(ScheduledRun).where(ScheduledRun.key.startswith('quotes:'), ScheduledRun.updated_at < expired))
         session.execute(delete(JobRun).where(JobRun.job == 'quotes', JobRun.started_at < expired))
         session.commit()
     jobs = due_jobs(current, hours)
+    local = current.astimezone(IST)
+    if os.getenv('NEWS_ENABLED', 'true') == 'true' and 6 <= local.hour < 20: jobs.append('news')
+    if not hours.get('open') and getattr(provider, 'id', '') == 'yfinance' and local.weekday() < 5 and 9 <= local.hour < 16:
+        jobs.append('quotes')
     for job in jobs:
         suffix = day
-        if job == 'quotes': suffix = str(int(current.timestamp() // 15))
+        if job == 'quotes': suffix = str(int(current.timestamp() // getattr(provider, 'refresh_seconds', 15)))
+        if job == 'news': suffix = str(int(current.timestamp() // 300))
         if job == 'close': suffix = f'{day}:{current.astimezone(IST).minute // 15}:{current.astimezone(IST).hour}'
         actions = {
             'history': lambda s: ingest_daily(s, provider, previous_session(s, provider, day)),
@@ -135,6 +153,7 @@ def tick(provider, current=None, factory=SessionLocal):
             'close': lambda s: close_day(s, provider, day),
             'morning': lambda s: deliver(s, day, 'morning'),
             'evening': lambda s: deliver(s, day, 'evening'),
+            'news': lambda s: collect_news(s),
         }
         execute_once(factory, f'{job}:{suffix}', actions[job], current)
     return jobs
@@ -162,7 +181,7 @@ def main():
         nonlocal stop
         stop = True
     signal.signal(signal.SIGTERM, shutdown); signal.signal(signal.SIGINT, shutdown)
-    provider = Upstox()
+    provider = create_provider()
     try:
         with worker_lock():
             while not stop:

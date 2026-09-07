@@ -99,6 +99,7 @@ def track_record(session):
 def system_health(session):
     from datetime import datetime,timezone
     from .market import quote_snapshot
+    from .news import news_snapshot
     versions=session.scalars(select(ModelVersion).order_by(ModelVersion.created_at.desc())).all()
     jobs=session.scalars(select(JobRun).order_by(JobRun.id.desc()).limit(20)).all()
     ideas=session.scalars(select(Improvement).order_by(Improvement.id)).all()
@@ -109,6 +110,7 @@ def system_health(session):
     quarantined=len(session.scalars(select(RawRecord.id).where(RawRecord.status=='quarantined')).all())
     import os
     live=quote_snapshot(session)
+    news=news_snapshot(session)
     worker_at=live['worker_at']
     worker_ok=bool(worker_at and (datetime.now(timezone.utc)-datetime.fromisoformat(worker_at)).total_seconds()<60)
     telegram_verified=session.get(Setting,'telegram_verified_at')
@@ -122,7 +124,9 @@ def system_health(session):
         dict(name='AI helpers',status='warning',detail='Not connected. The local trend rule still works.'),
         dict(name='F&O',status='warning',detail='Locked until live results meet the 60-day checks'),
         dict(name='Scheduler',status='ok' if worker_ok else 'warning',detail=f'Last check: {worker_at}' if worker_at else 'Not running'),
-        dict(name='Latest prices',status='ok' if any(not q['stale'] for q in live['quotes']) else 'warning',detail=f"{len(live['quotes'])} saved prices · updates every 15 seconds" if live['quotes'] else 'Market-data connection not ready')],
+        dict(name='Latest prices',status='ok' if any(not q['stale'] for q in live['quotes']) else 'warning',detail=f"{len(live['quotes'])} saved prices · {live['provider']} · checks every {live['refresh_seconds']} seconds" if live['quotes'] else 'Market-data connection not ready'),
+        dict(name='News feeds',status='ok' if news['sources'] and all(x['status']=='ok' for x in news['sources']) else 'warning',detail='; '.join(x['source']+': '+x['status'] for x in news['sources']) or 'No feeds selected'),
+        dict(name='Market hours',status='ok' if live['schedule_known'] else 'warning',detail='Session calendar loaded' if live['schedule_known'] else 'Unconfirmed; scheduled calls are paused')],
         models=[dict(name=x.name,status=x.status,description=x.description,date=x.created_at,brier=x.brier) for x in versions],
         jobs=[dict(name=x.job,status=x.status,rows=x.rows,detail=x.detail,at=x.started_at) for x in jobs],
         ideas=[dict(id=x.id,title=x.title,detail=x.detail,status=x.status) for x in ideas],

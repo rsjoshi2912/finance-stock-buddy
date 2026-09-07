@@ -154,3 +154,17 @@ Vocabulary on the site: "how often right" (not hit rate), "is its confidence hon
 - Index calls are scored for direction and marked "not traded" until an explicit proxy is chosen. Both model and simply-buying money exclude them identically.
 - The 0.53 baseline and background accuracy figures above are assumptions to investigate, not a universal published ceiling or verified performance of this system.
 - The runnable local version uses clearly labelled generated data. See README.md for implemented features and the remaining live-data, model, and deployment work.
+
+## 12. News and reaction knowledge (2026-09-07)
+
+The owner clarified that prediction must investigate latest news alongside historical prices, identify positive and negative effects, and learn from how comparable past events were followed by stock movements. [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md) defines this next layer, its source requirements, event categories, time controls, evaluation and implementation order.
+
+- Keep news sentiment, expected company-specific impact and actual later price reaction separate. Include Neutral, Mixed and Unclear; positive wording does not establish a profitable Buy call.
+- Record expectations when available, company/sector context, independent event counts and source/arrival times. Compare the overnight gap separately from our open-to-close trading result.
+- Later news can inform monitoring and the evening review, but never rewrite a morning prediction. Historical comparisons may use only outcomes available at the evaluated forecast time.
+- Public RSS collection is now implemented and locally verified. Event-conditioned learning remains planned. The current daily rule remains the momentum research baseline until additional signals have been tested.
+- Source access and historical coverage must be verified; the "all free" source list above is an initial aspiration, not confirmed availability of every feed or archive.
+
+## 13. Public data first (2026-09-07)
+
+The owner requested free public sources now, with multiple broker APIs later. Yahoo Finance via yfinance is the default price provider; Upstox remains optional. ET Markets, LiveMint Markets/Companies and RBI provide the initial public news collection. See PUBLIC_DATA.md for verified access, polling, observed timestamps, source gaps, the small starter watchlist and the remaining prediction work. No broker token is required for public mode.
