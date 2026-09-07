@@ -1,0 +1,14 @@
+.git
+.secrets
+**/*.key
+**/*.pem
+.env*
+**/.env*
+*.env
+.venv
+frontend
+data
+graphify-out
+**/__pycache__
+**/.pytest_cache
+**/node_modules

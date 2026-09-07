@@ -1,0 +1,11 @@
+[Unit]
+Description=Write the Nifty Signal morning research calls
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=nifty
+WorkingDirectory=/opt/finance-stock-buddy/backend
+EnvironmentFile=/opt/finance-stock-buddy/.env
+ExecStart=/opt/finance-stock-buddy/.venv/bin/python -m app.jobs predict
+NoNewPrivileges=true

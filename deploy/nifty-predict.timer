@@ -1,0 +1,10 @@
+[Unit]
+Description=Morning prediction at 07:20 India time (job checks NSE holidays)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 07:20:00 Asia/Kolkata
+Persistent=false
+Unit=nifty-predict.service
+
+[Install]
+WantedBy=timers.target

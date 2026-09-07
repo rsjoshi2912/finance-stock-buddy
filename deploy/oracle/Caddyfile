@@ -1,0 +1,15 @@
+https://130.210.23.30 {
+    tls {
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+            profile shortlived
+        }
+    }
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8000
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        X-Frame-Options DENY
+    }
+}

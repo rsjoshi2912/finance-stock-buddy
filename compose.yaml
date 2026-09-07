@@ -1,0 +1,44 @@
+name: nifty-signal
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: journal
+      POSTGRES_DB: journal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the server env file}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U journal -d journal']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: ${LIVE_ENV_FILE:-.env.live}
+    environment:
+      APP_MODE: live
+      DATABASE_URL: postgresql+psycopg://journal:${POSTGRES_PASSWORD}@db:5432/journal
+    depends_on:
+      db: {condition: service_healthy}
+    volumes:
+      - journal-data:/srv/app/data
+    ports:
+      - '127.0.0.1:8000:8000'
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ['python', '-m', 'app.scheduler']
+    env_file: ${LIVE_ENV_FILE:-.env.live}
+    environment:
+      APP_MODE: live
+      DATABASE_URL: postgresql+psycopg://journal:${POSTGRES_PASSWORD}@db:5432/journal
+    depends_on:
+      db: {condition: service_healthy}
+    volumes:
+      - journal-data:/srv/app/data
+volumes:
+  postgres-data:
+  journal-data:
