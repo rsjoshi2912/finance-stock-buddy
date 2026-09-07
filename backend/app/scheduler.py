@@ -20,6 +20,7 @@ from .ingest import now
 from .jobs import send_telegram
 from .market import IST, MarketError, create_provider, ingest_daily, market_session, previous_session, refresh_quotes
 from .news import collect_news
+from .fetch_lock import source_lock
 from .models import JobRun, Prediction, Resolution, ScheduledRun, Setting
 
 def due_jobs(current, hours):
@@ -61,8 +62,13 @@ def execute_once(factory, key, task, current=None):
             session.rollback(); return False
     try:
         with factory() as session:
-            result = task(session)
-            session.commit()
+            if key.split(':')[0] in ('history', 'quotes', 'close', 'news'):
+                with source_lock(session.get_bind()):
+                    result = task(session)
+                    session.commit()
+            else:
+                result = task(session)
+                session.commit()
         status, detail = 'ok', str(result)[:500]
     except Exception as error:
         # HTTP exceptions can include URLs and credentials. Store only controlled messages.

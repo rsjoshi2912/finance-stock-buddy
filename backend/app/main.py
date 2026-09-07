@@ -1,7 +1,7 @@
 import csv,io,os,secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI,Depends,HTTPException,Request
+from fastapi import FastAPI,Depends,HTTPException,Request,BackgroundTasks
 from fastapi.responses import Response,FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic,HTTPBasicCredentials
@@ -16,6 +16,8 @@ from .demo import seed_demo
 from .models import Improvement,Instrument,Price,Setting
 from .market import quote_snapshot
 from .news import news_snapshot
+from .refresh import request_refresh, refresh_status, run_refresh, RefreshCooldown
+from .market import MarketError
 
 FRONTEND_ORIGINS=[x.strip().rstrip('/') for x in os.getenv('FRONTEND_ORIGINS','').split(',') if x.strip()]
 if '*' in FRONTEND_ORIGINS:raise ValueError('FRONTEND_ORIGINS must list exact origins, never a wildcard')
@@ -69,6 +71,19 @@ def quotes(session:Session=Depends(session_dependency)):
 @app.get('/api/news')
 def news(session:Session=Depends(session_dependency)):
     return news_snapshot(session)
+
+@app.get('/api/refresh')
+def latest_fetch_status(session:Session=Depends(session_dependency)):
+    return refresh_status(session)
+
+@app.post('/api/refresh', status_code=202)
+def fetch_latest(background_tasks:BackgroundTasks, session:Session=Depends(session_dependency)):
+    try: state, started = request_refresh(session)
+    except RefreshCooldown as error:
+        raise HTTPException(429, str(error), headers={'Retry-After': str(error.seconds)}) from None
+    except MarketError as error: raise HTTPException(409, str(error)) from None
+    if started: background_tasks.add_task(run_refresh, state['id'])
+    return state
 
 @app.get('/api/today')
 def today(date:str|None=None,session:Session=Depends(session_dependency)):

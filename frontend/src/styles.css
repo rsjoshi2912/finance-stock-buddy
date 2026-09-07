@@ -18,3 +18,11 @@
 .news-list a {display:block;color:#263a5b;font-size:14px;line-height:1.5;text-decoration:none;}
 .news-list a:hover {color:#396ec3;text-decoration:underline;}
 .news-list small {display:block;margin-top:5px;color:#768297;font-size:11px;}
+
+.fetch-result {padding:0 24px 18px;color:#66768f;font-size:13px;line-height:1.6;}
+.fetch-result p {margin:3px 0;}
+.fetch-result small {display:block;margin-top:8px;}
+.fetch-spinner {animation:fetch-spin 1s linear infinite;}
+@keyframes fetch-spin {to {transform:rotate(360deg);}}
+@media (prefers-reduced-motion:reduce) {.fetch-spinner {animation:none;}}
+@media (max-width:600px) {.fetch-latest .panel-head {align-items:flex-start;flex-wrap:wrap;gap:12px;}}

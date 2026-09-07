@@ -69,3 +69,15 @@ To restart the preview or worker from the project root, in separate terminals:
 ```
 
 The worker runs only while this machine and process stay active. It is separate from the old sample preview on port 8000. Telegram is disabled in the prepared configuration. All caches, credentials, databases and test artifacts remain under this project.
+
+## Fetch latest on demand
+
+Use **Fetch latest** on the Today page to request fresh price snapshots and news immediately, including outside the scheduled collection window. The backend runs the request in the background, so the page stays usable. Progress is saved and survives a browser reload. Each source result is shown separately, and the price/news panels reload when the request finishes. Existing market timestamps remain visible even when a provider returns the same or delayed price.
+
+One manual request can run at a time. Repeated clicks or a second browser tab join the existing request. There is a 60-second pause after completion before another manual request; this protects public-source request limits. Scheduled and manual collection use the same database-specific lock. If another collection already holds it, the manual result says so and keeps previous data. The News enabled setting is respected.
+
+The owner-authenticated API is `POST /api/refresh` with an empty JSON object; it returns HTTP 202 and the saved request state. `GET /api/refresh` reports progress and the last result. This works without the scheduler process, as long as the API is running. A server restart can interrupt an in-process task; after ten minutes without progress it is shown as interrupted and can be retried. It does not automatically resume an interrupted fetch.
+
+This action fetches display quotes and news only. It does not import daily history, change or resolve saved predictions, place orders, or send Telegram messages. New observations retain their actual receipt times and cannot enter an earlier morning call.
+
+Verified: 65 backend tests and three hosted-page browser checks passed, including concurrent requests, partial failures, authentication, reload during progress and automatic panel updates. A real on-demand fetch was also exercised in the local preview.

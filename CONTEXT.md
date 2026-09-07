@@ -168,3 +168,7 @@ The owner clarified that prediction must investigate latest news alongside histo
 ## 13. Public data first (2026-09-07)
 
 The owner requested free public sources now, with multiple broker APIs later. Yahoo Finance via yfinance is the default price provider; Upstox remains optional. ET Markets, LiveMint Markets/Companies and RBI provide the initial public news collection. See PUBLIC_DATA.md for verified access, polling, observed timestamps, source gaps, the small starter watchlist and the remaining prediction work. No broker token is required for public mode.
+
+## 14. On-demand collection (2026-09-07)
+
+The owner requested an on-demand trigger for the latest data. The live Today page now has Fetch latest for quote snapshots and news. It reports background progress and source outcomes, prevents overlapping manual requests, and uses the same source lock as scheduled collection. Morning predictions and their results remain immutable. See PUBLIC_DATA.md for endpoint behaviour and recovery limits.

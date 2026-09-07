@@ -18,7 +18,8 @@ export default function LatestNews() {
       catch { if (active) setError('News could not be refreshed. Check System health.'); }
     };
     void load(); const timer = setInterval(load, 60000);
-    return () => {active = false; clearInterval(timer);};
+    window.addEventListener('journal:data-refreshed', load);
+    return () => {active = false; clearInterval(timer); window.removeEventListener('journal:data-refreshed', load);};
   }, []);
   return <section className="panel news-panel">
     <div className="panel-head"><div><h2><Newspaper size={16}/> Latest news</h2>

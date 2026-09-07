@@ -6,7 +6,7 @@ A private market learning journal for Ravi. Ten daily direction calls, every res
 
 **Public data:** [PUBLIC_DATA.md](PUBLIC_DATA.md) covers Yahoo prices and ET Markets, LiveMint and RBI news without a broker key. Real-data imports have been verified locally; the news learning model is still pending.
 
-**Live hosting:** [DEPLOYMENT.md](DEPLOYMENT.md) covers the GitHub Pages frontend, authenticated backend, Upstox price adapter, persistent scheduler and private Telegram setup. Integration code is provided; external services need your credentials and server before they can run.
+**Live hosting:** [DEPLOYMENT.md](DEPLOYMENT.md) covers the GitHub Pages frontend, authenticated backend, Upstox price adapter, persistent scheduler, on-demand prices/news refresh and private Telegram setup. Integration code is provided; external services need your credentials and server before they can run.
 
 **Prediction knowledge:** [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md) defines the planned news, company-event and historical-reaction layer, including how we will test whether it improves the price-only baseline. This layer is not running yet.
 
@@ -127,7 +127,7 @@ npm run test:e2e
 
 Browser checks require Google Chrome and the API at port 8000. They exercise page navigation, saved-call details, date and wrong-call filters, stock search, note previews, and responsive layouts. Screenshots are saved to `data/screenshot-desktop.png` and `data/screenshot-mobile.png`.
 
-Verified locally: **58 backend tests and the two hosted-page browser checks passed after adding public data; the production frontend build passed.** The three original journal browser checks passed in the foundation build. See PUBLIC_DATA.md for real-source verification. The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the two isolated hosted-page checks. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
+Verified locally: **65 backend tests and the three hosted-page browser checks passed after adding on-demand refresh; the production frontend build passed.** The three original journal browser checks passed in the foundation build. See PUBLIC_DATA.md for real-source verification. The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the three isolated hosted-page checks. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
 
 The frozen ten-day integration fixture expects **−₹150** for the model and **+₹850** for simply buying, with **50 of 100** calls right. This known losing example checks selection, resolution, costs, direction scoring, and message generation through the same functions used by the app.
 

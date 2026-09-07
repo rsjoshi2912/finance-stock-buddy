@@ -19,7 +19,8 @@ export default function LivePrices({symbols = []}: {symbols?: string[]}) {
       catch { if (active) setError('Prices could not be refreshed. Check System health.'); }
     }
     void load(); const timer = setInterval(load, 15000);
-    return () => {active = false; clearInterval(timer);};
+    window.addEventListener('journal:data-refreshed', load);
+    return () => {active = false; clearInterval(timer); window.removeEventListener('journal:data-refreshed', load);};
   }, []);
   const visible = data?.quotes.filter(q => !symbols.length || symbols.includes(q.symbol)).slice(0, 10) || [];
   return <section className="panel live-prices">
