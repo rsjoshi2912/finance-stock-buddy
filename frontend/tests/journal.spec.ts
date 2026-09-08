@@ -12,6 +12,8 @@ test('today, frozen call details, and stock lookup',async({page})=>{
   await page.getByRole('textbox',{name:'Find a stock'}).fill('Infosys');
   await page.locator('.search-results button').click();await expect(page.locator('.stock-title h2')).toHaveText('Infosys');
   await expect(page.locator('.recharts-surface').first()).toBeVisible();
+  await expect(page.getByRole('heading',{name:/What the news says about INFY/})).toBeVisible();
+  await expect(page.getByText('No collected news has named this company yet.')).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -25,7 +27,8 @@ test('history filters, record charts, health and note previews',async({page})=>{
   await expect(page.getByRole('heading',{name:'Is its confidence honest?'})).toBeVisible();
   await expect(page.locator('.recharts-surface')).toHaveCount(2);
   await page.getByRole('button',{name:'System health',exact:true}).click();
-  await expect(page.locator('.health-card')).toHaveCount(8);
+  await expect(page.locator('.health-card')).toHaveCount(11);
+  await expect(page.getByText('No company news has been assessed yet')).toBeVisible();
   await expect(page.getByText('Not connected. The local trend rule still works.')).toBeVisible();
   await page.getByRole('button',{name:'Today',exact:true}).click();
   await page.getByRole('button',{name:'Morning note',exact:true}).click();

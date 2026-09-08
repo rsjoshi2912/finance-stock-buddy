@@ -26,3 +26,31 @@
 @keyframes fetch-spin {to {transform:rotate(360deg);}}
 @media (prefers-reduced-motion:reduce) {.fetch-spinner {animation:none;}}
 @media (max-width:600px) {.fetch-latest .panel-head {align-items:flex-start;flex-wrap:wrap;gap:12px;}}
+
+.event-notes .pattern-strip {display:flex;flex-wrap:wrap;gap:10px;padding:0 24px 16px;}
+.pattern {background:#f6f8fc;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.6;color:#66768f;min-width:220px;flex:1;}
+.pattern strong {display:block;color:#3f4d66;text-transform:capitalize;}
+.note-list {display:flex;flex-direction:column;}
+.event-note {padding:18px 24px;border-top:1px solid #f0f2f6;}
+.event-note header {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+.event-note header .badge {margin-left:0;}
+.event-note header small {color:#8691a3;font-size:11px;}
+.event-note > a {font-weight:600;color:#253046;line-height:1.5;}
+.event-note > a:hover {color:#396ec3;text-decoration:underline;}
+.event-note > small {display:block;margin-top:4px;color:#768297;font-size:11px;}
+.note-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 22px;margin:14px 0 12px;}
+.note-grid dt {font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#9ba9bd;margin-bottom:5px;}
+.note-grid dd {margin:0;font-size:12px;line-height:1.65;color:#4a5872;overflow-wrap:anywhere;}
+.note-grid ul {margin:0;padding-left:16px;}
+.note-form {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px;}
+.note-form label {display:flex;flex-direction:column;gap:5px;font-size:10px;color:#8691a3;}
+.note-form select,.note-form input,.note-form textarea {padding:8px 10px;border:1px solid #e2e7ee;border-radius:7px;font-size:12px;background:#fff;color:#253046;}
+.note-form textarea {min-height:70px;resize:vertical;}
+.note-form .wide {grid-column:1 / -1;}
+.note-form .actions {grid-column:1 / -1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.event-notes .quote-note {padding:0 24px 20px;}
+
+/* Phone-friendly message previews and option research. */
+.telegram-preview{padding:20px;background:#edf3f0}.telegram-preview .brief-text{white-space:pre-wrap;overflow-wrap:anywhere;font-family:inherit;font-size:13px;line-height:1.65;color:#31443c;background:white;padding:20px;border-radius:12px 12px 12px 2px;box-shadow:0 2px 7px #233e3010;margin:0}.telegram-preview strong{color:#243a30;font-weight:700}
+.index-lab{font-size:13px;line-height:1.7;color:#52627a}.index-lab .panel{margin-bottom:18px}.index-status{padding:24px;display:grid;grid-template-columns:2fr 1fr;gap:30px;background:linear-gradient(120deg,#f8faff,#fff)}.index-status h2{font-size:21px;color:#293c57;margin:12px 0}.index-status-note{align-self:center;padding:17px;border:1px solid #e1e7ef;border-radius:10px;background:white}.index-methods .panel{padding:22px;margin:0}.index-methods h3,.index-next h3{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:15px;color:#304560}.index-lab .quote-note{padding:12px 0 20px}.index-calculator{display:grid;grid-template-columns:1fr 1fr;gap:28px;padding:24px}.index-inputs{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-content:start}.index-inputs label{font-size:12px;font-weight:500;color:#425570;display:flex;flex-direction:column;gap:7px}.index-inputs input,.index-inputs select{width:100%;min-width:0;padding:11px;border:1px solid #ccd6e3;background:white;color:#283e5a;border-radius:7px;font:inherit}.index-inputs input:focus,.index-inputs select:focus{outline:2px solid #89abe2;outline-offset:2px}.index-inputs p{grid-column:1/-1;font-size:12px}.index-lab a{color:#285eae;text-decoration:underline}.index-results{padding:22px;background:#f5f8fc;border:1px solid #e0e7f1;border-radius:12px}.index-results h3{font-size:17px;color:#304560;margin:14px 0 10px}.index-results p{margin:12px 0}.index-results dl>div{padding:13px 0;border-bottom:1px solid #dde5ef}.index-results dt{font-size:12px}.index-results dd{font-size:18px;font-weight:600;color:#314766;margin-top:4px}.index-results .goal-context{background:#fff;padding:12px;border-radius:8px}.index-warning{font-size:12px}.index-warning svg{vertical-align:middle;margin-right:4px}.index-next{padding:24px}.index-next ol{padding-left:20px}.index-next li{padding:5px 0}.index-next p{margin-top:12px}
+@media(max-width:760px){.index-status,.index-calculator{grid-template-columns:1fr;gap:16px;padding:18px}.index-status h2{font-size:19px}.index-lab .panel-head{flex-wrap:wrap;gap:12px}.index-inputs{gap:12px}.index-results{padding:16px}.telegram-preview{padding:12px}.telegram-preview .brief-text{padding:15px;font-size:12px}.index-status-note{padding:12px}}

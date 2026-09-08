@@ -4,11 +4,13 @@ A private market learning journal for Ravi. Ten daily direction calls, every res
 
 **This is a working local research foundation. It does not place orders, generate validated live investment advice, or promise profits. The default history is synthetic and labelled throughout.**
 
-**Public data:** [PUBLIC_DATA.md](PUBLIC_DATA.md) covers Yahoo prices and ET Markets, LiveMint and RBI news without a broker key. Real-data imports have been verified locally; the news learning model is still pending.
+**Public data:** [PUBLIC_DATA.md](PUBLIC_DATA.md) covers Yahoo prices and ET Markets, LiveMint and RBI news without a broker key. Real-data imports have been verified locally. Collected articles that name a tracked company now get a frozen event note and, later, a measured reaction; a news learning model that could change a call is still pending.
 
-**Live hosting:** [DEPLOYMENT.md](DEPLOYMENT.md) covers the GitHub Pages frontend, authenticated backend, Upstox price adapter, persistent scheduler, on-demand prices/news refresh and private Telegram setup. Integration code is provided; external services need your credentials and server before they can run.
+**Live hosting:** [DEPLOYMENT.md](DEPLOYMENT.md) covers the GitHub Pages frontend, authenticated backend, Upstox price adapter, persistent scheduler, on-demand prices/news refresh and private Telegram setup. The authenticated Oracle API, worker and HTTPS site are running, Telegram is configured, and the GitHub Pages frontend is live. See DEPLOYMENT.md for verified status and operating limits.
 
-**Prediction knowledge:** [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md) defines the planned news, company-event and historical-reaction layer, including how we will test whether it improves the price-only baseline. This layer is not running yet.
+**Prediction knowledge:** [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md) defines the news, company-event and historical-reaction layer, including how we will test whether it improves the price-only baseline. Its record-keeping half (event notes, reactions, comparable history) is running; the evaluated challenger that could earn influence is not.
+
+**Resume work:** [MEMORY.md](MEMORY.md) records the latest handoff; [AGENTS.md](AGENTS.md) is the agent entry point. [INDEX_PLAN.md](INDEX_PLAN.md) covers the new option research screen and the data still needed for call/put signals.
 
 ## Run it
 
@@ -47,6 +49,7 @@ For frontend development, keep the API running and run `npm run dev` in `fronten
 | Optional research | LightGBM walk-forward report with full-session chronological splits; FinBERT CPU function; matched 60-day promotion predicate; atomic token-budget reservation |
 | Delivery | Deterministic Telegram-sized templates, preview endpoints, separate opt-in CLI sending to one allowed chat, duplicate-attempt protection |
 | Live services | Selectable Yahoo/Upstox quote/candle adapters, public RSS collection, source-specific display snapshots, actual receipt times, exchange-session checks, durable scheduled jobs, bounded retries, verified private-chat delivery |
+| Event notes | One frozen note per collected article and named company: event type plus Positive / Negative / Neutral / Mixed / Unclear from conservative keyword rules; owner notes saved as new versions; the reaction session derived from publication time and the NSE calendar; gap, open-to-close and five-session reactions written once when bars exist; "what happened before" limited to reactions known when the note was written; syndicated copies counted as one event; shown on the stock page and in the news list; zero influence on calls |
 | Hosting | Pages workflow, sign-in and exact-origin API access, Docker Compose/PostgreSQL, Caddy and systemd templates; infrastructure requires setup |
 
 The current displayed rule **is the five-day momentum baseline**, deliberately. Comparing it with always-up provides a working measurement starting point; it is not an ML model with a demonstrated advantage. All extra AI helpers have zero influence until implemented and validated.
@@ -109,11 +112,11 @@ The report requires at least **100 resolved days**: 40 initial training days and
 The following are **not running** and must not be presented as complete:
 
 1. Production verification of the Upstox adapter/calendar and supplied universe, five-year backfill, full historical constituent membership with re-entries, corporate-action reconciliation, and authoritative exchange archive reconciliation.
-2. Global/context feeds, company-event tagging, fundamentals, and scheduled FinBERT sentiment. Public RSS collection is now implemented; it does not yet change predictions.
+2. Global/context feeds, fundamentals, exchange-filing connectors, expectation data and scheduled FinBERT sentiment. Public RSS collection and keyword-rule event notes with measured reactions are implemented; neither changes predictions, and the keyword rules are a deliberately narrow placeholder for an evaluated extractor.
 3. A configured and evaluated LLM provider; strict per-agent JSON validation and provenance; scored helper weights; automatic safe fallback and actual spend accounting. Token reservation and the future writer contract are supplied, but no provider call is active.
 4. A trained/calibrated champion, weekly retraining and promotion integrated into daily forecasts, reliable event-conditioned scorecards, and validated confidence thresholds.
-5. Deployment of the implemented API/worker schedule, Telegram credentials and actual delivery test, VM provisioning, PostgreSQL startup, private HTTPS, and backups. See DEPLOYMENT.md.
-6. F&O analysis after the cash gate passes. **No live-order integration is present or planned for this educational version.**
+5. Backup retention/recovery rehearsal, continued resource monitoring, PostgreSQL verification and delivery monitoring. The SQLite VM API/worker, Telegram configuration, HTTPS and Pages are deployed. See DEPLOYMENT.md.
+6. Validated intraday F&O signals and an option-price simulator. Index lab currently provides a one-lot learning calculator and proposed research rules only; a cash gate cannot validate options. **No live-order integration is present or planned for this educational version.**
 
 ## Checks
 
@@ -127,18 +130,19 @@ npm run test:e2e
 
 Browser checks require Google Chrome and the API at port 8000. They exercise page navigation, saved-call details, date and wrong-call filters, stock search, note previews, and responsive layouts. Screenshots are saved to `data/screenshot-desktop.png` and `data/screenshot-mobile.png`.
 
-Verified locally: **65 backend tests and the three hosted-page browser checks passed after adding on-demand refresh; the production frontend build passed.** The three original journal browser checks passed in the foundation build. See PUBLIC_DATA.md for real-source verification. The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the three isolated hosted-page checks. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
+Verified at review: **74 inherited backend tests passed. The reviewed changes add regression checks for record-time cutoffs, missing sessions, negation, message escaping and provider cleanup, plus an Index lab browser check. See MEMORY.md for the latest completed check counts and deployment status.** The event tests cover corrected articles, ambiguous company names, missing expectations, the publication-to-session boundary, gap versus open-to-close reactions, cutoff-limited comparisons, syndicated duplicates and the absence of any path from notes into the daily rule. See PUBLIC_DATA.md for real-source verification. The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the four isolated hosted-page checks. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
 
 The frozen ten-day integration fixture expects **−₹150** for the model and **+₹850** for simply buying, with **50 of 100** calls right. This known losing example checks selection, resolution, costs, direction scoring, and message generation through the same functions used by the app.
 
 ## Project map
 
 - `CONTEXT.md` — original requirements and approved clarifications.
-- `frontend/src/App.tsx`, `styles.css` — all five pages and responsive design.
+- `frontend/src/App.tsx`, `styles.css` — journal pages and responsive design; `IndexLab.tsx` adds option research.
 - `backend/app/engine.py` — cutoff readers, calls, outcomes, P&L and promotion gate.
 - `backend/app/analytics.py` — the common source for website scorecards.
 - `backend/app/models.py`, `db.py`, `schema.sql` — database and immutability controls.
 - `backend/app/ingest.py`, `jobs.py` — explicit import and job boundary.
+- `backend/app/news.py`, `events.py` — public feed collection; frozen event notes, measured reactions and cutoff-safe comparisons.
 - `backend/app/learning.py`, `research.py` — optional model research.
 - `backend/app/briefs.py`, `telegram_templates.md`, `brief_prompt.md` — messages and future writer contract.
 - `deploy/` — reviewable hosting templates; not installed services.

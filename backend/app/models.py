@@ -155,3 +155,46 @@ class NewsArticle(Base):
     received_at: Mapped[str] = mapped_column(String(32))
     time_basis: Mapped[str] = mapped_column(String(60))
     symbols: Mapped[str] = mapped_column(Text, default='[]')
+
+class EventAssessment(Base):
+    """One frozen hypothesis about one article's effect on one company.
+
+    A corrected article or a later opinion adds a new row; nothing here is rewritten.
+    Assessments never feed the daily price rule until an evaluated challenger passes its gate.
+    """
+    __tablename__ = 'event_assessments'
+    __table_args__ = (CheckConstraint("effect IN ('Positive','Negative','Neutral','Mixed','Unclear')"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey('news_articles.id'), index=True)
+    symbol: Mapped[str] = mapped_column(ForeignKey('instruments.symbol'), index=True)
+    event_type: Mapped[str] = mapped_column(String(40))
+    effect: Mapped[str] = mapped_column(String(10))
+    horizon: Mapped[str] = mapped_column(String(30), default='next_session')
+    confidence: Mapped[str] = mapped_column(String(10), default='low')
+    facts: Mapped[str] = mapped_column(Text)
+    expectation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reliability: Mapped[str] = mapped_column(String(30), default='reported')
+    assessor: Mapped[str] = mapped_column(String(40))
+    evidence_hash: Mapped[str] = mapped_column(String(64))
+    eligible_session: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    published_during_session: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    assessed_at: Mapped[str] = mapped_column(String(32))
+
+class EventOutcome(Base):
+    """Observed reaction for one assessment and horizon, written once when the bars exist."""
+    __tablename__ = 'event_outcomes'
+    __table_args__ = (CheckConstraint("horizon IN ('session','five_sessions')"),)
+    assessment_id: Mapped[int] = mapped_column(ForeignKey('event_assessments.id'), primary_key=True)
+    horizon: Mapped[str] = mapped_column(String(20), primary_key=True)
+    start_date: Mapped[str] = mapped_column(String(10))
+    end_date: Mapped[str] = mapped_column(String(10))
+    reference_close: Mapped[float] = mapped_column(Float)
+    open: Mapped[float | None] = mapped_column(Float, nullable=True)
+    close: Mapped[float] = mapped_column(Float)
+    gap_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    session_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    change_pct: Mapped[float] = mapped_column(Float)
+    benchmark_symbol: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    benchmark_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    bars_available_at: Mapped[str] = mapped_column(String(32))
+    recorded_at: Mapped[str] = mapped_column(String(32))

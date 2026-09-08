@@ -4,7 +4,9 @@ Status: design requirements, not a claim of implemented news prediction. Updated
 
 ## What exists today
 
-The daily rule uses five-day price momentum. The app can import timestamped news, save sources with a call, and filter evidence by publication and receipt time. An optional FinBERT function and a sentiment feature exist in the research module. Public RSS collection is now implemented with source health, dated revisions and conservative company-name matching; see PUBLIC_DATA.md. Event classification, historical event comparisons and a validated combined model are still to be built. Attaching a news source to a call does not mean that news influenced its probability.
+The daily rule uses five-day price momentum. The app can import timestamped news, save sources with a call, and filter evidence by publication and receipt time. An optional FinBERT function and a sentiment feature exist in the research module. Public RSS collection is implemented with source health, dated revisions and conservative company-name matching; see PUBLIC_DATA.md. Attaching a news source to a call does not mean that news influenced its probability.
+
+Since 2026-09-07 (`backend/app/events.py`), every collected article that names a tracked company receives a frozen **event note**: an event type, a possible effect (Positive, Negative, Neutral, Mixed or Unclear), the supporting wording, the source reliability, the article's evidence hash, and the first session whose open follows publication. The labels come from narrow keyword rules (`rules_v1` for existing notes, `rules_v2` for new notes after the Sept 8 review) that leave anything unmatched as Unclear and refuse to judge a reported earnings or guidance figure without its expectation. The owner can add a separate note in their own words; it is saved as a new version beside the rule's note. When the bars exist, the overnight gap, the open-to-close move, the close-to-close move and the five-session move are written once. "What happened before" looks only at reactions that were already known when the note was written, groups similar same-company/type/effect stories within three days (a heuristic that can also merge distinct events), broadens from the company to its sector to all tracked companies, and says "Not enough history" below five cases. Database triggers make notes and reactions immutable. Nothing here changes a call; the validated extractor, the combined challenger and its evaluation remain to be built.
 
 ## What the system should remember
 
@@ -96,10 +98,12 @@ The evening view keeps the original assessment beside the actual result. It can 
 
 ## Build sequence
 
-1. Collect timestamped official events and permitted news; implement source health, revisions, event deduplication and company mapping. Keep the price baseline in control.
-2. Add versioned event assessments and matched outcome records. Test late/corrected news, duplicate headlines, ambiguous companies, missing expectations, cutoff boundaries, and gap versus open-to-close outcomes.
-3. Build historical comparison pages and a labelled research dataset with explicit archive limitations. Begin forward collection immediately once feeds are ready.
+1. **Done for public RSS.** Collect timestamped permitted news; implement source health, revisions, event deduplication and company mapping. Keep the price baseline in control. Official exchange-filing connectors are still open.
+2. **Done (2026-09-07).** Versioned event assessments and matched outcome records, with tests for late/corrected news, duplicate headlines, ambiguous companies, missing expectations, cutoff boundaries, and gap versus open-to-close outcomes. Limitation: the keyword rules are placeholders, and a release during a session is measured from the next session because daily bars cannot isolate a post-release window.
+3. **Partly done.** The stock page shows each note's comparable history as known at the time and the company's own completed events by type. A labelled research dataset with explicit archive limitations is still open. Forward collection is running wherever the worker runs.
 4. Evaluate text/event extraction and a combined challenger using chronological testing and probability checks. Add influence only when measured results justify it.
 5. Add intraday event studies and F&O inputs only as separate, validated extensions. A cash-stock direction model is insufficient to assess option premium changes, spread, volatility or expiry effects.
 
 The observed Oracle VM has approximately 1 GB RAM. Until measured otherwise, keep web serving and collection lightweight and run model training/text batches on a separate suitable machine. Do not assume the original brief's larger ARM VM resources are available.
+
+Review update (2026-09-08): all historical reaction views now enforce recording time as well as price availability. Five-session windows require consecutive verified sessions; missing prior-day bars block gap measurements. New notes leave negated, uncertain and multiple-company wording Unclear. Existing immutable notes/outcomes are preserved. Patterns below five cases show no success percentage.

@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict,Counter
-from sqlalchemy import select
+from sqlalchemy import func,select
 from .models import Prediction,Resolution,Instrument,ModelVersion,JobRun,Improvement,TokenBudget,RawRecord,Setting
 
 def records(session, before=None, symbol=None):
@@ -116,11 +116,15 @@ def system_health(session):
     telegram_verified=session.get(Setting,'telegram_verified_at')
     verified_chat=session.get(Setting,'telegram_verified_chat_id')
     telegram_verified=telegram_verified and verified_chat and verified_chat.value==os.getenv('TELEGRAM_CHAT_ID')
+    from .models import EventAssessment,EventOutcome
+    notes=session.scalar(select(func.count(EventAssessment.id))) or 0
+    measured=session.scalar(select(func.count(EventOutcome.assessment_id)).where(EventOutcome.horizon=='session')) or 0
     return dict(mode=data['mode'],checks=[
         dict(name='Morning cutoff',status='ok' if violations==0 else 'bad',detail=f'{violations} recorded source-time violations'),
         dict(name='Price history',status='warning' if data['mode']=='demo' else 'ok' if data['date'] else 'warning',detail='Generated sample prices' if data['mode']=='demo' else 'Imported history; check the last date'),
         dict(name='Price checks',status='warning' if quarantined else 'ok',detail=f'{quarantined} rows held for review'),
         dict(name='Telegram',status='ok' if telegram_verified and os.getenv('TELEGRAM_ENABLED')=='true' else 'warning',detail='Sending disabled' if os.getenv('TELEGRAM_ENABLED')!='true' else 'Bot and private chat verified' if telegram_verified else 'Configured; run the connection check'),
+        dict(name='Event notes',status='ok' if notes else 'warning',detail=f'{notes} notes from collected news · {measured} with a measured session reaction · no influence on calls' if notes else 'No company news has been assessed yet'),
         dict(name='AI helpers',status='warning',detail='Not connected. The local trend rule still works.'),
         dict(name='F&O',status='warning',detail='Locked until live results meet the 60-day checks'),
         dict(name='Scheduler',status='ok' if worker_ok else 'warning',detail=f'Last check: {worker_at}' if worker_at else 'Not running'),

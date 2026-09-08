@@ -14,7 +14,7 @@ The default provider is now `yfinance`. Upstox remains selectable, and later bro
 
 NSE announcements and Moneycontrol are optional RSS connectors. They are not enabled by default: NSE timed out from the tested machine, and Moneycontrol's successful response contained old articles. The importer reports unavailable/stale sources rather than claiming a successful current feed. Configure named feeds with `NEWS_FEEDS`; arbitrary fetch URLs are not exposed through the app.
 
-Public RSS is not a complete historical news archive. The news list is for collection and review; sentiment, event assessment and historical-reaction learning have no influence on the price rule yet. See [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md).
+Public RSS is not a complete historical news archive. Articles that name a tracked company receive a frozen keyword-rule event note when collected, and a measured reaction once the session bars arrive; the news list shows the label and the stock page shows the full note. These notes have no influence on the price rule. See [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md).
 
 ## Run with public observations
 

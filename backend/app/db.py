@@ -5,6 +5,9 @@ from .config import DATABASE_URL, ROOT
 class Base(DeclarativeBase):
     pass
 
+# Rows in these tables are historical records. They are written once and never changed.
+FROZEN_TABLES = ('predictions', 'resolutions', 'event_assessments', 'event_outcomes')
+
 def build_engine(url=DATABASE_URL):
     ROOT.joinpath('data').mkdir(exist_ok=True)
     engine = create_engine(url, connect_args={'check_same_thread': False,'timeout':30} if url.startswith('sqlite') else {}, pool_pre_ping=True)
@@ -26,12 +29,12 @@ def initialize(target=engine):
             conn.execute(text('SELECT pg_advisory_xact_lock(7236920)'))
         Base.metadata.create_all(conn)
         if target.dialect.name == 'sqlite':
-            for table in ('predictions', 'resolutions'):
+            for table in FROZEN_TABLES:
                 for action in ('UPDATE', 'DELETE'):
                     conn.execute(text(f"CREATE TRIGGER IF NOT EXISTS immutable_{table}_{action.lower()} BEFORE {action} ON {table} BEGIN SELECT RAISE(ABORT, 'Recorded calls and results cannot be changed'); END"))
         elif target.dialect.name == 'postgresql':
             conn.execute(text("CREATE OR REPLACE FUNCTION reject_record_change() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Recorded calls and results cannot be changed'; END; $$"))
-            for table in ('predictions', 'resolutions'):
+            for table in FROZEN_TABLES:
                 conn.execute(text(f'DROP TRIGGER IF EXISTS immutable_record ON {table}'))
                 conn.execute(text(f'CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON {table} FOR EACH ROW EXECUTE FUNCTION reject_record_change()'))
 

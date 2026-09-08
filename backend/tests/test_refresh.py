@@ -124,3 +124,24 @@ def test_refresh_endpoint_requires_owner_and_joins_existing_request(workspace, m
         assert client.post('/api/refresh', json={}, auth=auth).status_code == 409
     finally:
         client.close(); main.app.dependency_overrides.clear()
+
+def test_calendar_provider_stays_open_until_news_assessment_finishes(workspace, monkeypatch):
+    factory, _ = workspace
+    state = {'closed': False, 'assessed': False}
+    provider = SimpleNamespace(close=lambda: state.update(closed=True))
+    monkeypatch.setattr(refresh, 'create_provider', lambda: provider)
+    monkeypatch.setattr(refresh, 'refresh_quotes', lambda session, provider: 0)
+    monkeypatch.setattr(refresh, 'collect_news', lambda session: [{'source':'Fixture','status':'ok','added':0}])
+    def calendar(session, received_provider):
+        assert received_provider is provider and not state['closed']
+        return lambda day: {'open':None, 'close':None}
+    def assess(session, hours):
+        assert not state['closed'] and callable(hours)
+        state['assessed'] = True
+        return 0
+    monkeypatch.setattr(refresh, 'calendar_hours', calendar)
+    monkeypatch.setattr(refresh, 'assess_new_articles', assess)
+    with factory() as session: request, _ = refresh.request_refresh(session)
+    refresh.run_refresh(request['id'], factory)
+    assert state == {'closed':True, 'assessed':True}
+    with factory() as session: assert refresh.refresh_status(session)['status'] == 'complete'

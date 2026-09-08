@@ -17,7 +17,9 @@ from .models import Improvement,Instrument,Price,Setting
 from .market import quote_snapshot
 from .news import news_snapshot
 from .refresh import request_refresh, refresh_status, run_refresh, RefreshCooldown
-from .market import MarketError
+from .market import MarketError,create_provider
+from .events import EFFECTS,EVENT_TYPES,calendar_hours,event_notes,history_summary,note_payload,record_owner_assessment
+from .models import NewsArticle
 
 FRONTEND_ORIGINS=[x.strip().rstrip('/') for x in os.getenv('FRONTEND_ORIGINS','').split(',') if x.strip()]
 if '*' in FRONTEND_ORIGINS:raise ValueError('FRONTEND_ORIGINS must list exact origins, never a wildcard')
@@ -105,7 +107,35 @@ def stock(symbol:str,session:Session=Depends(session_dependency)):
     prices=session.scalars(select(Price).where(Price.symbol==symbol).order_by(Price.date)).all()
     return dict(symbol=symbol,name=instrument.name,sector=instrument.sector,summary=analytics.summarize(rows),
         calls=[analytics.serialize(*row,rows) for row in reversed(rows)],
-        prices=[dict(date=p.date,close=p.close) for p in prices],mode='demo' if any(p.synthetic for p in prices) else 'live')
+        prices=[dict(date=p.date,close=p.close) for p in prices],mode='demo' if any(p.synthetic for p in prices) else 'live',
+        events=event_notes(session,symbol),patterns=history_summary(session,symbol),
+        event_options=dict(event_types=list(EVENT_TYPES),effects=list(EFFECTS)))
+
+class OwnerAssessment(BaseModel):
+    symbol:str
+    event_type:str
+    effect:str
+    facts:str
+    expectation:str|None=None
+    confidence:str='medium'
+
+@app.post('/api/events/{article_id}/assessment',status_code=201)
+def assess(article_id:int,body:OwnerAssessment,session:Session=Depends(session_dependency)):
+    """The owner's own read of an article. It is added as a new version; earlier notes stay as written."""
+    if not session.get(NewsArticle,article_id):raise HTTPException(404,'Article not found')
+    hours=None;provider=None
+    try:
+        provider=create_provider()
+        hours=calendar_hours(session,provider)
+    except MarketError:pass  # The note is still saved; its reaction window is shown as unknown.
+    try:row=record_owner_assessment(session,article_id,body.symbol.strip().upper(),body.event_type,body.effect,body.facts,
+        expectation=body.expectation,confidence=body.confidence,hours=hours)
+    except ValueError as error:raise HTTPException(422,str(error)) from None
+    finally:
+        if provider:provider.close()
+    session.commit()
+    article=session.get(NewsArticle,article_id)
+    return dict(note=note_payload(session,row,article,row.assessed_at),message='Saved as a new note. No call or earlier note was changed.')
 
 @app.get('/api/health')
 def health(session:Session=Depends(session_dependency)):
@@ -127,7 +157,8 @@ def decide(idea_id:int,body:Decision,session:Session=Depends(session_dependency)
 def brief(period:str,date:str|None=None,session:Session=Depends(session_dependency)):
     if period not in ('morning','evening'):raise HTTPException(404,'Choose morning or evening')
     data=analytics.dashboard(session,date)
-    return dict(text=getattr(briefs,period)(data),sent=False)
+    message=getattr(briefs,period)(data)
+    return dict(text=briefs.plain_text(message),html=message,parse_mode='HTML',sent=False)
 
 @app.get('/api/export.csv')
 def export(session:Session=Depends(session_dependency)):

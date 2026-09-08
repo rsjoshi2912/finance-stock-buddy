@@ -132,10 +132,17 @@ def collect_news(session, sources=None, transport=None, observed_at=None):
     session.flush()
     return results
 
+def impact_label(labels):
+    if not labels: return 'Not assessed'
+    effects = sorted({x['effect'] for x in labels})
+    return ' / '.join(effects) + (' · owner read' if any(x['assessor'] == 'owner' for x in labels) else ' · keyword rule')
+
 def news_snapshot(session):
+    from .events import article_labels
     # Latest observed revision per URL; earlier revisions remain in storage.
     latest = select(func.max(NewsArticle.id)).group_by(NewsArticle.url)
     articles = session.scalars(select(NewsArticle).where(NewsArticle.id.in_(latest)).order_by(NewsArticle.published_at.desc()).limit(30)).all()
+    labels = article_labels(session, [x.id for x in articles])
     current = datetime.now(timezone.utc)
     sources = []
     for key in configured_feeds():
@@ -146,5 +153,6 @@ def news_snapshot(session):
         sources.append(source)
     return dict(sources=sources, refresh_seconds=300, influences_predictions=False,
         articles=[dict(id=x.id, source=x.source, title=x.title, url=x.url, published_at=x.published_at,
-            received_at=x.received_at, time_basis=x.time_basis, symbols=json.loads(x.symbols), impact='Not assessed',
+            received_at=x.received_at, time_basis=x.time_basis, symbols=json.loads(x.symbols),
+            impact=impact_label(labels.get(x.id)), assessments=labels.get(x.id, []),
             stale=(current - datetime.fromisoformat(x.published_at)).total_seconds() > 72 * 3600) for x in articles])

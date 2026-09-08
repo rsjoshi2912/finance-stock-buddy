@@ -1,6 +1,6 @@
 # Engineering brief
 
-Read CONTEXT.md and README.md first. The owner approved the standard short-position profit formula on 2026-09-06. See the clarification appended to CONTEXT.md.
+Read AGENTS.md and MEMORY.md to resume, then CONTEXT.md and README.md. The owner approved the standard short-position profit formula on 2026-09-06. See the clarification appended to CONTEXT.md.
 
 - React + TypeScript + Vite frontend; FastAPI + SQLAlchemy backend. SQLite for local demo; PostgreSQL driver and schema support for deployment.
 - One immutable prediction row; its one-time outcome is a separate immutable row. Database triggers enforce both protections.

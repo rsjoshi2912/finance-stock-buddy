@@ -86,3 +86,32 @@ test('on-demand fetch shows progress and reloads prices and news when finished',
   expect(requests).toBe(1); expect(priceReads).toBeGreaterThan(before);
   await expect(page.locator('.call-row')).toHaveCount(0);
 });
+
+test('index learning limits, clear examples and formatted Telegram preview', async ({page}) => {
+  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto('./');
+  await page.getByLabel('Password').fill('pages-browser-fixture-only');
+  await page.getByRole('button', {name: 'Open my journal'}).click();
+  await page.getByRole('button', {name: 'Morning note', exact: true}).click();
+  await expect(page.locator('.brief-text strong').first()).toContainText('NIFTY SIGNAL');
+  await expect(page.locator('.brief-text')).not.toContainText('<b>');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', {name: 'Index lab', exact: true}).click();
+  await expect(page.getByText('No live option signal', {exact: true})).toBeVisible();
+  await page.getByRole('button', {name: 'Try an example'}).click();
+  await expect(page.getByText('Skip: one lot exceeds a limit')).toBeVisible();
+  await expect(page.getByTestId('option-funding')).toHaveText('₹5,260.00');
+  await expect(page.getByTestId('option-stop-loss')).toHaveText('₹710.00');
+  await expect(page.getByTestId('option-target')).toHaveText('₹1,240.00');
+  await page.getByLabel('Daily goal to examine').fill('5000');
+  await expect(page.getByText('Skip: one lot exceeds a limit')).toBeVisible();
+  await expect(page.getByText('50.0% in a day', {exact: true})).toBeVisible();
+  await page.getByLabel('Account capital').fill('100000');
+  await expect(page.getByText('Fits the example limits · paper only')).toBeVisible();
+  await page.getByLabel('Units in one lot').fill('');
+  await expect(page.getByTestId('option-funding')).toHaveCount(0);
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path:'../data/index-lab-mobile.png',fullPage:true});
+  expect(errors).toEqual([]);
+});

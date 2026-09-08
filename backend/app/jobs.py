@@ -10,7 +10,7 @@ from .db import initialize,SessionLocal
 from .models import JobRun,TokenBudget,Setting
 from .engine import make_daily_calls,resolve_day
 from .analytics import dashboard
-from .briefs import morning,evening
+from .briefs import morning,evening,validate
 from .ingest import import_instruments,import_prices,import_news,now
 
 def trading_day(day,calendar):
@@ -28,7 +28,7 @@ def reserve_tokens(session,day,tokens,cap):
 
 def send_telegram(text,period,day,session):
     if MODE!='live' or os.getenv('TELEGRAM_ENABLED')!='true':raise ValueError('Telegram is disabled. Live mode and explicit enablement are required.')
-    if len(text)>4000:raise ValueError('Telegram text is too long')
+    validate(text)
     token=os.getenv('TELEGRAM_BOT_TOKEN');chat=os.getenv('TELEGRAM_CHAT_ID')
     if not token or not chat:raise ValueError('Telegram token and the one allowed chat ID are required')
     verified=session.get(Setting,'telegram_verified_chat_id')
@@ -40,7 +40,7 @@ def send_telegram(text,period,day,session):
     session.add(Setting(key=key,value='attempted'));session.commit()
     try:
         with httpx.Client(timeout=20) as client:
-            response=client.post(f'https://api.telegram.org/bot{token}/sendMessage',json={'chat_id':chat,'text':text,'link_preview_options':{'is_disabled':True}})
+            response=client.post(f'https://api.telegram.org/bot{token}/sendMessage',json={'chat_id':chat,'text':text,'parse_mode':'HTML','link_preview_options':{'is_disabled':True}})
             if response.status_code!=200 or not response.json().get('ok'):raise ValueError('Telegram rejected the delivery; inspect bot configuration')
     except httpx.HTTPError:
         # Never include the request URL; it contains the bot secret.

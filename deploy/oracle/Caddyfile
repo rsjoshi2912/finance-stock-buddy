@@ -1,3 +1,9 @@
+{
+    # Browsers and curl send no SNI when connecting to a bare IP, and behind Oracle's NAT the
+    # listener's own address is a private one. Without this, Caddy cannot select the certificate.
+    default_sni 130.210.23.30
+}
+
 https://130.210.23.30 {
     tls {
         issuer acme {

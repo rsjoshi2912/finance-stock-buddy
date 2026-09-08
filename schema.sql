@@ -99,6 +99,32 @@ CREATE TABLE token_budgets (
 	PRIMARY KEY (date)
 );
 
+CREATE TABLE event_assessments (
+	id SERIAL NOT NULL,
+	article_id INTEGER NOT NULL,
+	symbol VARCHAR(30) NOT NULL,
+	event_type VARCHAR(40) NOT NULL,
+	effect VARCHAR(10) NOT NULL,
+	horizon VARCHAR(30) NOT NULL,
+	confidence VARCHAR(10) NOT NULL,
+	facts TEXT NOT NULL,
+	expectation TEXT,
+	reliability VARCHAR(30) NOT NULL,
+	assessor VARCHAR(40) NOT NULL,
+	evidence_hash VARCHAR(64) NOT NULL,
+	eligible_session VARCHAR(10),
+	published_during_session BOOLEAN,
+	assessed_at VARCHAR(32) NOT NULL,
+	PRIMARY KEY (id),
+	CHECK (effect IN ('Positive','Negative','Neutral','Mixed','Unclear')),
+	FOREIGN KEY(article_id) REFERENCES news_articles (id),
+	FOREIGN KEY(symbol) REFERENCES instruments (symbol)
+);
+
+CREATE INDEX ix_event_assessments_symbol ON event_assessments (symbol);
+
+CREATE INDEX ix_event_assessments_article_id ON event_assessments (article_id);
+
 CREATE TABLE instrument_mappings (
 	symbol VARCHAR(30) NOT NULL,
 	instrument_key VARCHAR(100) NOT NULL,
@@ -168,6 +194,26 @@ CREATE TABLE quotes (
 	FOREIGN KEY(symbol) REFERENCES instruments (symbol)
 );
 
+CREATE TABLE event_outcomes (
+	assessment_id INTEGER NOT NULL,
+	horizon VARCHAR(20) NOT NULL,
+	start_date VARCHAR(10) NOT NULL,
+	end_date VARCHAR(10) NOT NULL,
+	reference_close FLOAT NOT NULL,
+	open FLOAT,
+	close FLOAT NOT NULL,
+	gap_pct FLOAT,
+	session_pct FLOAT,
+	change_pct FLOAT NOT NULL,
+	benchmark_symbol VARCHAR(30),
+	benchmark_pct FLOAT,
+	bars_available_at VARCHAR(32) NOT NULL,
+	recorded_at VARCHAR(32) NOT NULL,
+	PRIMARY KEY (assessment_id, horizon),
+	CHECK (horizon IN ('session','five_sessions')),
+	FOREIGN KEY(assessment_id) REFERENCES event_assessments (id)
+);
+
 CREATE TABLE resolutions (
 	prediction_id INTEGER NOT NULL,
 	entry FLOAT NOT NULL,
@@ -188,3 +234,7 @@ CREATE OR REPLACE FUNCTION reject_record_change() RETURNS trigger LANGUAGE plpgs
 CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON predictions FOR EACH ROW EXECUTE FUNCTION reject_record_change();
 
 CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON resolutions FOR EACH ROW EXECUTE FUNCTION reject_record_change();
+
+CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON event_assessments FOR EACH ROW EXECUTE FUNCTION reject_record_change();
+
+CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON event_outcomes FOR EACH ROW EXECUTE FUNCTION reject_record_change();

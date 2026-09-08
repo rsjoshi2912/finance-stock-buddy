@@ -172,3 +172,11 @@ The owner requested free public sources now, with multiple broker APIs later. Ya
 ## 14. On-demand collection (2026-09-07)
 
 The owner requested an on-demand trigger for the latest data. The live Today page now has Fetch latest for quote snapshots and news. It reports background progress and source outcomes, prevents overlapping manual requests, and uses the same source lock as scheduled collection. Morning predictions and their results remain immutable. See PUBLIC_DATA.md for endpoint behaviour and recovery limits.
+
+## 15. Event notes and measured reactions (2026-09-07)
+
+Step 2 of KNOWLEDGE_PLAN.md is implemented. Each collected article that names a tracked company gets a frozen note (event type; Positive / Negative / Neutral / Mixed / Unclear; wording, reliability, evidence hash; the first session whose open follows publication). Labels come from narrow keyword rules that leave the unmatched as Unclear and never judge an earnings or guidance figure without its expectation. The owner can add their own note; it is a new version, never an edit. Gap, open-to-close and five-session reactions are written once when bars exist. Comparable history uses only reactions known when a note was written, counts syndicated copies once, and reports "Not enough history" below five cases. Notes and reactions are immutable in the database, and a test fails if the daily rule ever reads them. Decision kept: news has zero influence on calls until an evaluated challenger passes the gate in KNOWLEDGE_PLAN.md.
+
+## 16. Review, options research and handoff (2026-09-08)
+
+The owner requested review of the intervening agent’s work, concise formatted Telegram notes and a simple index-option workflow. See MEMORY.md for the durable handoff, telegram_templates.md for the implemented HTML message contract and INDEX_PLAN.md for proposed Nifty/Bank Nifty research. The Index lab calculator is educational; no real-time call/put strategy, income guarantee or order execution is enabled. News comparison and calendar bugs found in review were corrected without rewriting earlier notes or calls.

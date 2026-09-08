@@ -20,6 +20,7 @@ from .ingest import now
 from .jobs import send_telegram
 from .market import IST, MarketError, create_provider, ingest_daily, market_session, previous_session, refresh_quotes
 from .news import collect_news
+from .events import assess_new_articles, calendar_hours, record_outcomes
 from .fetch_lock import source_lock
 from .models import JobRun, Prediction, Resolution, ScheduledRun, Setting
 
@@ -104,6 +105,16 @@ def deliver(session, day, period):
     send_telegram(message, period, day, session)
     return f'{period} note sent to the configured owner'
 
+def news_job(session, provider):
+    sources = collect_news(session)
+    # Assessments are written as soon as an article is collected, before any reaction is known.
+    assessed = assess_new_articles(session, hours=calendar_hours(session, provider))
+    return {'sources': sources, 'assessed': assessed}
+
+def load_history(session, provider, day):
+    counts = ingest_daily(session, provider, previous_session(session, provider, day))
+    return {'prices': counts, 'event_outcomes': record_outcomes(session, hours=calendar_hours(session, provider))}
+
 def close_day(session, provider, day):
     counts = ingest_daily(session, provider, day)
     resolved = resolve_day(session, day)
@@ -112,7 +123,8 @@ def close_day(session, provider, day):
         Resolution.prediction_id == Prediction.id).where(Resolution.prediction_id.is_(None),
         Prediction.date < day).distinct()).all()
     for previous in pending: resolved += resolve_day(session, previous)
-    return {'prices': counts, 'resolved': resolved}
+    outcomes = record_outcomes(session, hours=calendar_hours(session, provider))
+    return {'prices': counts, 'resolved': resolved, 'event_outcomes': outcomes}
 
 def tick(provider, current=None, factory=SessionLocal):
     current = current or datetime.now(timezone.utc)
@@ -153,13 +165,13 @@ def tick(provider, current=None, factory=SessionLocal):
         if job == 'news': suffix = str(int(current.timestamp() // 300))
         if job == 'close': suffix = f'{day}:{current.astimezone(IST).minute // 15}:{current.astimezone(IST).hour}'
         actions = {
-            'history': lambda s: ingest_daily(s, provider, previous_session(s, provider, day)),
+            'history': lambda s: load_history(s, provider, day),
             'predict': lambda s: predict(s, provider, day, current),
             'quotes': lambda s: refresh_quotes(s, provider),
             'close': lambda s: close_day(s, provider, day),
             'morning': lambda s: deliver(s, day, 'morning'),
             'evening': lambda s: deliver(s, day, 'evening'),
-            'news': lambda s: collect_news(s),
+            'news': lambda s: news_job(s, provider),
         }
         execute_once(factory, f'{job}:{suffix}', actions[job], current)
     return jobs
