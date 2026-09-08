@@ -123,3 +123,7 @@ Local automated tests cover provider errors and secret redaction, timestamp inte
 Use System health to inspect worker heartbeat, price timestamps, failed jobs and Telegram configuration. Back up PostgreSQL regularly with `pg_dump`; verify restores before relying on the journal. The baseline trend rule remains uncalibrated. Connecting live services starts an experiment; it does not establish profitability or unlock F&O.
 
 GitHub Actions is used for builds/deployment, not for timing daily calls: its [scheduled workflows can be delayed or dropped](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+
+### Reviewed release (2026-09-08)
+
+Commit `f3de0b7` deploys the event-history review fixes, formatted Telegram notes and Index lab. Both the VM and Pages now include the reviewed frontend. The VM release was verified by SHA-256 before extraction; prior code and an integrity-checked SQLite backup are in `data/backups/before-f3de0b7-*`. No configuration or database was replaced. API, worker and proxy are active. GitHub backend/build checks and Pages publication passed. Message rendering and mock delivery were tested; no Telegram message was sent by this review. See MEMORY.md for the handoff and INDEX_PLAN.md for the limits of the option calculator.
