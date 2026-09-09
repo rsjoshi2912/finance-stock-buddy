@@ -42,12 +42,20 @@ def header(data, period):
             '<b>SAMPLE DATA · generated examples</b>' if data['mode'] == 'demo' else 'Paper journal · no real orders', '']
 
 
+def no_calls(data, period='STATUS'):
+    lines = header(data, period)
+    reason = (data.get('daily_status') or {}).get('reason') or 'No complete set of morning calls was saved.'
+    lines += ['<b>NO CALLS TODAY</b>', clean(reason, 400), '',
+              'Nothing to act on from the daily stock journal.',
+              'Past calls are in Calls by day. Index lab has separate paper checks.']
+    return validate('\n'.join(lines))
+
+
 def morning(data):
     lines = header(data, 'MORNING')
     lines += ['Open → close · information received by 07:00 IST',
               'Five-day price rule. Scores are unverified; news does not change these calls.', '']
-    if not data['calls']:
-        return validate('\n'.join(lines + ['<b>No saved calls</b>', 'Nothing to act on. Check System health for the next scheduled run.']))
+    if not data['calls']: return no_calls(data, 'MORNING')
     for direction, label in [('UP', '↑ BUY WATCHLIST'), ('DOWN', '↓ SELL WATCHLIST')]:
         selected = [x for x in data['calls'] if x['direction'] == direction]
         lines.append(f'<b>{label} · {len(selected)}</b>')
@@ -68,6 +76,7 @@ def morning(data):
 
 
 def evening(data):
+    if not data['calls']: return no_calls(data, 'EVENING')
     lines = header(data, 'EVENING')
     calls = [x for x in data['calls'] if x['result'] != 'Pending']
     pending = [clean(x['symbol'], 30) for x in data['calls'] if x['result'] == 'Pending']

@@ -12,10 +12,11 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.exc import IntegrityError
 
 from .analytics import dashboard
-from .briefs import evening, morning
+from .briefs import evening, morning, no_calls
 from .config import MODE, ROOT
 from .db import SessionLocal, engine, initialize
-from .engine import cutoff_for, make_daily_calls, resolve_day
+from .engine import cutoff_for, make_daily_calls, resolve_day, InsufficientCandidates
+from .daily_status import call_status, record_shortfall
 from .ingest import now
 from .jobs import send_telegram
 from .market import IST, MarketError, create_provider, ingest_daily, market_session, previous_session, refresh_quotes
@@ -76,7 +77,7 @@ def execute_once(factory, key, task, current=None):
     except Exception as error:
         # HTTP exceptions can include URLs and credentials. Store only controlled messages.
         status = 'failed'
-        detail = str(error)[:500] if isinstance(error, MarketError) else f'{type(error).__name__}: job failed; inspect server configuration'
+        detail = str(error)[:500] if isinstance(error, (MarketError, InsufficientCandidates)) else f'{type(error).__name__}: job failed; inspect server configuration'
     with factory() as session:
         record = session.get(ScheduledRun, key)
         record.status = status; record.detail = detail; record.updated_at = stamp
@@ -97,13 +98,18 @@ def predict(session, provider, day, current):
     if day != local.date().isoformat() or not clock_time(7, 20) <= local.time() < clock_time(8, 25):
         raise MarketError('The morning prediction window has passed.')
     previous = previous_session(session, provider, day)
-    return make_daily_calls(session, day, required_price_date=previous)
+    try:
+        return make_daily_calls(session, day, required_price_date=previous)
+    except InsufficientCandidates as error:
+        record_shortfall(session, day, error)
+        session.commit()  # Persist the diagnostic even though the forecast job fails.
+        raise
 
 def deliver(session, day, period):
     data = dashboard(session, day)
-    if data['mode'] != 'live' or len(data['calls']) != 10:
-        raise MarketError('Ten saved live calls are required before a daily message can be sent.')
-    message = (morning if period == 'morning' else evening)(data)
+    if data['mode'] != 'live': raise MarketError('Only live journal messages can be sent.')
+    data['daily_status'] = call_status(session, day)
+    message = (morning if period == 'morning' else evening)(data) if len(data['calls']) == 10 else no_calls(data, period.upper())
     send_telegram(message, period, day, session)
     return f'{period} note sent to the configured owner'
 
@@ -210,7 +216,7 @@ def main():
             while not stop:
                 try: tick(provider)
                 except Exception as error:
-                    detail=str(error) if isinstance(error, MarketError) else f'{type(error).__name__}: worker tick failed'
+                    detail=str(error) if isinstance(error, (MarketError, InsufficientCandidates)) else f'{type(error).__name__}: worker tick failed'
                     print(detail, flush=True)
                     try:
                         with SessionLocal() as session:

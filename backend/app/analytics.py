@@ -66,7 +66,9 @@ def dashboard(session,selected=None):
     enough=len(matched60)>=60 and not sample
     honest=recent['brier'] is not None and recent['baseline_brier'] is not None and recent['brier']<recent['baseline_brier']
     # Passing Brier alone is not proof of calibration. F&O remains locked pending actual calibration and live validation.
+    from .daily_status import call_status
     return dict(mode='demo' if sample else 'live',date=current,previous_date=previous,dates=dates,
+        daily_status=call_status(session,current) if current and not sample else None,
         calls=[serialize(*row,allrows) for row in today],yesterday=[serialize(*row,allrows) for row in yesterday],
         yesterday_summary=summarize(yesterday),summary=stats,
         verdict={'ready':False,'title':'A useful experiment. Still unproven.' if sample else 'Still gathering evidence.',
@@ -119,7 +121,12 @@ def system_health(session):
     from .models import EventAssessment,EventOutcome
     notes=session.scalar(select(func.count(EventAssessment.id))) or 0
     measured=session.scalar(select(func.count(EventOutcome.assessment_id)).where(EventOutcome.horizon=='session')) or 0
+    from .daily_status import call_status
+    from .market import IST
+    daily=call_status(session,datetime.now(IST).date().isoformat())
     return dict(mode=data['mode'],checks=[
+        dict(name='Today’s calls',status='ok' if daily['status']=='ready' else 'warning',detail=daily['reason']),
+        dict(name='Morning notification',status='ok' if daily['telegram']=='sent' else 'warning',detail='Telegram confirmed delivery' if daily['telegram']=='sent' else 'Delivery unconfirmed; inspect before retrying' if daily['telegram']=='unconfirmed' else 'No Telegram delivery attempted for today'),
         dict(name='Morning cutoff',status='ok' if violations==0 else 'bad',detail=f'{violations} recorded source-time violations'),
         dict(name='Price history',status='warning' if data['mode']=='demo' else 'ok' if data['date'] else 'warning',detail='Generated sample prices' if data['mode']=='demo' else 'Imported history; check the last date'),
         dict(name='Price checks',status='warning' if quarantined else 'ok',detail=f'{quarantined} rows held for review'),

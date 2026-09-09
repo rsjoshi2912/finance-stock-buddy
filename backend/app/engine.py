@@ -46,10 +46,16 @@ def capped_judge_probability(model_probability, proposed, event_impact=0):
     bound = 1 if abs(event_impact) == 2 else 0.15
     return max(0.01, min(0.99, max(model_probability-bound, min(model_probability+bound, proposed))))
 
-def make_daily_calls(session, day, *, synthetic=False, model_name='momentum_research_v1', required_price_date=None):
+class InsufficientCandidates(ValueError):
+    """Controlled diagnostic; contains only candidate counts, never provider secrets."""
+    def __init__(self, buy, sell):
+        self.buy, self.sell = buy, sell
+        super().__init__(f'Only {buy} Buy and {sell} Sell candidates qualified. The daily batch needs at least 5 of each; no calls were published.')
+
+
+def daily_candidates(session, day, *, synthetic=False, required_price_date=None):
+    """Read-only evaluation. Does not create forecasts, including for past dates."""
     cutoff = cutoff_for(day)
-    if session.scalar(select(Prediction.id).where(Prediction.date == day, Prediction.model_version == model_name).limit(1)):
-        return 0
     instruments = session.scalars(select(Instrument).where(Instrument.member_from <= day)).all()
     candidates = []
     for instrument in instruments:
@@ -81,11 +87,19 @@ def make_daily_calls(session, day, *, synthetic=False, model_name='momentum_rese
             ref_price=round(ref,2),rationale=f'Price has {"risen" if momentum>=0 else "fallen"} {abs(momentum)*100:.1f}% over the last five sessions. This rule expects that direction to continue; a reversal would work against it.',
             sources=json.dumps(source),synthetic=synthetic)
         candidates.append((abs(probability-.5)*volatility,row))
+    return candidates
+
+
+def make_daily_calls(session, day, *, synthetic=False, model_name='momentum_research_v1', required_price_date=None):
+    if session.scalar(select(Prediction.id).where(Prediction.date == day, Prediction.model_version == model_name).limit(1)):
+        return 0
+    candidates = daily_candidates(session, day, synthetic=synthetic, required_price_date=required_price_date)
+    buy = sum(row['direction'] == 'UP' for _, row in candidates)
+    sell = sum(row['direction'] == 'DOWN' for _, row in candidates)
+    if buy < 5 or sell < 5: raise InsufficientCandidates(buy, sell)
     picked = []
     for direction in ('UP','DOWN'):
         rows = sorted((x for x in candidates if x[1]['direction']==direction), key=lambda x:x[0], reverse=True)[:5]
-        if len(rows) != 5:
-            raise ValueError(f'Need five supported {direction} calls; found {len(rows)}. No directions were fabricated.')
         for rank,(_,row) in enumerate(rows,1):
             row['rank']=rank
             picked.append(row['symbol'])

@@ -158,3 +158,25 @@ test('index research separates direction from options, expires old actions and r
   await page.screenshot({path:'../data/index-signals-mobile.png',fullPage:true});
   expect(errors).toEqual([]);
 });
+
+test('Today explains skipped calls and shows a no-calls Telegram preview',async({page})=>{
+  await page.route('**/api/today',async route=>{
+    const response=await route.fetch();const data=await response.json();
+    await route.fulfill({json:{...data,mode:'live',date:'2026-09-09',calls:[],daily_status:{status:'skipped',reason:'Only 3 Buy and 17 Sell candidates qualified. The daily batch needs at least 5 of each; no calls were published.',telegram:'sent'}}});
+  });
+  await page.route('**/api/brief/morning?date=2026-09-09',route=>route.fulfill({json:{html:'<b>NO CALLS TODAY</b>\nOnly 3 Buy and 17 Sell candidates qualified.',text:'NO CALLS TODAY\nOnly 3 Buy and 17 Sell candidates qualified.'}}));
+  await page.goto('./');await page.getByLabel('Password').fill('pages-browser-fixture-only');
+  await page.getByRole('button',{name:'Open my journal'}).click();
+  await expect(page.getByRole('heading',{name:'No stock calls today'})).toBeVisible();
+  await expect(page.locator('.daily-call-notice')).toContainText('3 Buy and 17 Sell');
+  await expect(page.locator('.daily-call-notice')).toContainText('Telegram confirmed');
+  await expect(page.locator('.call-row')).toHaveCount(0);
+  await page.getByRole('button',{name:'Morning note',exact:true}).click();
+  await expect(page.locator('.brief-text')).toContainText('NO CALLS TODAY');
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:'../data/daily-no-calls-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'See previous calls'}).click();
+  await expect(page.getByRole('heading',{name:'10 calls on the record'})).toBeVisible();
+});

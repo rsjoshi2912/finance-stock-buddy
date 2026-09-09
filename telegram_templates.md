@@ -34,3 +34,7 @@ An evening note leads with net paper result, simply-buying result and their diff
 Index lab has a separate owner-only preview at `GET /api/indices/brief`: **INDEX CHECK**, paper status, Nifty / Bank Nifty direction, short reason, check time in IST and Call / Put / Skip. Validated contract details and illustrative premium levels appear when available. Text is escaped and kept under the existing parsed-message limit. No automatic index alerts are sent. The learning calculator remains separate and uses user-entered assumptions.
 
 Formatting reference: [Telegram Bot API](https://core.telegram.org/bots/api#formatting-options).
+
+## Skipped daily batch (2026-09-09)
+
+A missing or incomplete daily batch now produces a short **NO CALLS TODAY** status note at the usual morning/evening schedule, with the recorded reason. Insufficient candidates are counted explicitly; calls are not relabelled or backfilled. It uses the same verified private chat and once-only `telegram:{period}:{day}` claim as a normal note. An ambiguous attempt is not automatically retried. A no-calls evening note does not claim that results are pending. Preview remains read-only.

@@ -1,4 +1,5 @@
 import csv,io,os,secrets
+from datetime import datetime
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI,Depends,HTTPException,Request,BackgroundTasks
@@ -17,7 +18,7 @@ from .models import Improvement,Instrument,Price,Setting
 from .market import quote_snapshot
 from .news import news_snapshot
 from .refresh import request_refresh, refresh_status, run_refresh, RefreshCooldown
-from .market import MarketError,create_provider
+from .market import IST,MarketError,create_provider
 from .events import EFFECTS,EVENT_TYPES,calendar_hours,event_notes,history_summary,note_payload,record_owner_assessment
 from .models import NewsArticle
 from .index_research import snapshot as index_snapshot
@@ -112,7 +113,7 @@ def fetch_latest(background_tasks:BackgroundTasks, session:Session=Depends(sessi
 
 @app.get('/api/today')
 def today(date:str|None=None,session:Session=Depends(session_dependency)):
-    return analytics.dashboard(session,date)
+    return analytics.dashboard(session,date or (datetime.now(IST).date().isoformat() if MODE=='live' else None))
 
 @app.get('/api/track-record')
 def track(session:Session=Depends(session_dependency)):
@@ -179,7 +180,7 @@ def decide(idea_id:int,body:Decision,session:Session=Depends(session_dependency)
 @app.get('/api/brief/{period}')
 def brief(period:str,date:str|None=None,session:Session=Depends(session_dependency)):
     if period not in ('morning','evening'):raise HTTPException(404,'Choose morning or evening')
-    data=analytics.dashboard(session,date)
+    data=analytics.dashboard(session,date or (datetime.now(IST).date().isoformat() if MODE=='live' else None))
     message=getattr(briefs,period)(data)
     return dict(text=briefs.plain_text(message),html=message,parse_mode='HTML',sent=False)
 

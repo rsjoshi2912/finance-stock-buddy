@@ -1,5 +1,9 @@
 # Project handoff
 
+## Active repair — 2026-09-09 (missing daily calls and notification)
+
+The owner reported no calls or Telegram notification today. Live recheck at 05:33 UTC confirmed zero September 9 calls, prediction/morning jobs failed three times, Telegram enabled with no attempted delivery, current worker heartbeat. Root cause remains 3 Buy / 17 Sell versus the required five each. Repair in progress: controlled candidate-shortfall exception and recorded diagnostic; actual IST date in the live Today endpoint; clear no-calls banner above live feeds; morning/evening status messages even when a full batch is unavailable, using the existing once-only Telegram key and verified private chat. No relaxed selection rule or backdated forecasts. The owner’s existing Telegram notification authorization covers the repair and one explanatory status note; inspect delivery before sending and never retry an ambiguous result. Current verification: all six hosted browser checks passed. The first backend run passed 111 checks and found one old health-list test that assumed a fixed position for Event notes; changed it to assert the named check. Final verification passed: 112 backend tests, six browser checks and production frontend build; graph updated to 1,273 nodes / 4,141 edges / 37 communities. Next: deploy with backup, record today’s diagnostic from a read-only candidate check, send one clearly labelled late status update, verify site and Telegram, update this handoff.
+
 ## Latest checkpoint — 2026-09-09 (index paper signals deployed)
 
 The owner explicitly requested frequent file-based handoffs before session limits. Save this document after major checkpoints; an abrupt quota limit cannot be predicted. All local files must remain in this project directory. The earlier usage-limit approval rejection was resolved when the owner resumed this session.

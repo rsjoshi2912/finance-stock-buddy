@@ -206,4 +206,4 @@ def test_owner_notes_are_versioned_validated_and_shown_beside_the_news(client, s
     assert client.post('/api/events/999999/assessment', json={'symbol': 'RELIANCE', 'event_type': 'other', 'effect': 'Unclear', 'facts': 'Nothing to add here'}).status_code == 404
     listed = client.get('/api/news').json()['articles'][0]
     assert listed['impact'] == 'Neutral / Positive · owner read' and len(listed['assessments']) == 2
-    assert client.get('/api/health').json()['checks'][4]['name'] == 'Event notes'
+    assert any(check['name'] == 'Event notes' for check in client.get('/api/health').json()['checks'])
