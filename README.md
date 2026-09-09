@@ -1,12 +1,12 @@
 # Nifty Signal
 
-A private market learning journal for Ravi. Ten daily direction calls, every result kept, and a comparison with simply buying the same stocks. The interface uses plain English and works on desktop and mobile.
+A private market learning journal for Ravi. Up to ten available daily direction calls, every result kept, and a comparison with simply buying the same stocks. Fewer calls and one-sided days are valid. The interface uses plain English and works on desktop and mobile.
 
 **This is a working local research foundation. It does not place orders, generate validated live investment advice, or promise profits. The default history is synthetic and labelled throughout.**
 
 **Public data:** [PUBLIC_DATA.md](PUBLIC_DATA.md) covers Yahoo prices and ET Markets, LiveMint and RBI news without a broker key. Real-data imports have been verified locally. Collected articles that name a tracked company now get a frozen event note and, later, a measured reaction; a news learning model that could change a call is still pending.
 
-**Live hosting:** [DEPLOYMENT.md](DEPLOYMENT.md) covers the GitHub Pages frontend, authenticated backend, Upstox price adapter, persistent scheduler, on-demand prices/news refresh and private Telegram setup. The authenticated Oracle API, worker and HTTPS site are running, Telegram is configured, and the GitHub Pages frontend is live. See DEPLOYMENT.md for verified status and operating limits.
+**Live hosting:** [DEPLOYMENT.md](DEPLOYMENT.md) covers the GitHub Pages frontend, authenticated backend, Upstox price adapter, persistent scheduler, on-demand prices/news refresh and private Telegram setup. Oracle and Pages were deployed and Telegram configured in the prior checkpoints. See [MEMORY.md](MEMORY.md) for the last recorded deployed revision, current local changes and checks; a local build does not update the running site.
 
 **Prediction knowledge:** [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md) defines the news, company-event and historical-reaction layer, including how we will test whether it improves the price-only baseline. Its record-keeping half (event notes, reactions, comparable history) is running; the evaluated challenger that could earn influence is not.
 
@@ -37,22 +37,25 @@ For frontend development, keep the API running and run `npm run dev` in `fronten
 
 | Area | Implemented behaviour |
 | --- | --- |
-| Today | Honest trust check, five buy/five sell examples, full call drawer, previous results, money comparison, recent winning and losing days |
-| Track record | Rolling direction accuracy, predicted vs observed confidence, monthly results, buy/sell and stock/index breakdowns, uncertain miss causes |
-| Calls by day | Date navigation, direction and wrong-call filters, immutable details, morning/evening previews |
-| Stock lookup | Search, all historical research calls, price with right/wrong dots, money vs simply buying |
-| System health | Actual job records, quarantine count, source checks, unconnected-service states, current rule, zero-weight inactive helpers, improvement decisions persisted to the database |
+| Today | Available calls first, actual Buy/Sell counts and stock allocation, ranges and alerts, current or previous results, compact market prices/news; one sample/paper label |
+| Track record | Net result and same-stock comparison, cumulative chart and monthly table; accuracy, rule-score and direction/instrument breakdowns on demand |
+| Calls by day | Date navigation, direction and wrong-call filters, immutable details; collapsed morning/evening previews |
+| Stock lookup | Search, price with right/wrong dots, company news and measured reactions; historical calls, comparisons and provenance on demand |
+| Index lab | Current Nifty/Bank Nifty checks, option/feed/expiry status, optional one-lot calculator, method/source details and saved assessments |
+| System health | Actual job records, quarantine/cutoff checks, feed and scheduler status, notification delivery; method and queued experiments on demand, without inactive AI/F&O cards |
 | Scoring | Correct long and short math, constant costs, same-stock comparison, flat/pending states, cumulative results, drawdown, best/worst day |
 | Data integrity | UTC-normalized publication and receipt cutoffs, frozen calls and results enforced with database triggers, separate raw and accepted imports |
 | Imports | Explicit owner-supplied universe/price CSV and timestamped news JSON, deduplication, price quarantine, 2,000-character news cap |
-| Baselines | Fixed 0.53 always-up and five-day momentum predictions stored for every instrument with enough history |
+| Baselines | Fixed 0.53 always-up and five-day momentum predictions stored for every eligible instrument; selected names retain the same ranks in each baseline |
 | Optional research | LightGBM walk-forward report with full-session chronological splits; FinBERT CPU function; matched 60-day promotion predicate; atomic token-budget reservation |
-| Delivery | Deterministic Telegram-sized templates, preview endpoints, separate opt-in CLI sending to one allowed chat, duplicate-attempt protection |
+| Delivery | Deterministic Telegram-sized templates, any nonempty call count, empty-day status notes, read-only previews, opt-in scheduled/CLI delivery to one verified private chat, duplicate-attempt protection |
 | Live services | Selectable Yahoo/Upstox quote/candle adapters, public RSS collection, source-specific display snapshots, actual receipt times, exchange-session checks, durable scheduled jobs, bounded retries, verified private-chat delivery |
 | Event notes | One frozen note per collected article and named company: event type plus Positive / Negative / Neutral / Mixed / Unclear from conservative keyword rules; owner notes saved as new versions; the reaction session derived from publication time and the NSE calendar; gap, open-to-close and five-session reactions written once when bars exist; "what happened before" limited to reactions known when the note was written; syndicated copies counted as one event; shown on the stock page and in the news list; zero influence on calls |
 | Hosting | Pages workflow, sign-in and exact-origin API access, Docker Compose/PostgreSQL, Caddy and systemd templates; infrastructure requires setup |
 
 The current displayed rule **is the five-day momentum baseline**, deliberately. Comparing it with always-up provides a working measurement starting point; it is not an ML model with a demonstrated advantage. All extra AI helpers have zero influence until implemented and validated.
+
+Selection approved on 2026-09-09: rank eligible candidates by the existing score across both directions and select the first ten, or all candidates when fewer qualify. Ties use the symbol. No direction is forced and no five-per-direction minimum remains. New batches record the separate `ranked_available_v1` selection policy and candidate/selected counts. All eligible predictions and both baselines are still saved. Existing days retain their original ranks and outcomes; the September 9 skipped record is not backfilled.
 
 ## The scorecard means exactly this
 
@@ -92,9 +95,9 @@ Price CSV: `symbol,date,open,high,low,close,volume,published_at`. Dates are ISO 
 
 News JSON: a list of `{ "symbol": "...", "title": "...", "url": "https://...", "published_at": "...+05:30", "body": "..." }`. Its receipt time is also captured independently. Sentiment defaults to neutral until the optional sentiment step is used.
 
-Before scheduling live calls, supply `data/nse-holidays.json` as an object mapping a year to verified NSE holiday dates, e.g. `{ "2026": ["YYYY-MM-DD", "..."] }`. No calendar is bundled as a claimed authoritative list. Unknown years fail closed. Live forecasts reject backdating and execution after 09:00 IST. A day with fewer than five supported calls in either direction fails visibly rather than inventing a direction.
+The provider-aware worker uses a source-linked 2026 NSE calendar and reviewed overrides; unknown years and unconfirmed session hours fail closed. See [PUBLIC_DATA.md](PUBLIC_DATA.md). Scheduled forecasts run 07:20–08:25 IST on verified regular sessions, using observations published and received by 07:00. The legacy import/predict CLI above separately requires an explicit holiday file and rejects backdating or execution after 09:00. Any positive eligible candidate count is valid; an empty set produces a recorded no-calls reason. Later imports cannot create a missed morning batch.
 
-For Telegram, configure the bot token and one chat ID, then explicitly enable `TELEGRAM_ENABLED=true`. Preview first. Only the separate `app.jobs send --period morning|evening` command sends; visiting the website never does. Delivery has not been exercised against an actual bot.
+For Telegram, configure the bot token and one private chat ID, verify the chat, then explicitly enable `TELEGRAM_ENABLED=true`. Preview first. Delivery runs through the worker's message windows or the explicit sending CLI; visiting the website and requesting a preview never send. The sender records its attempt before network I/O and does not retry an ambiguous delivery. Prior real delivery is recorded in [MEMORY.md](MEMORY.md); automated checks use mocks.
 
 ## Optional model research
 
@@ -128,9 +131,9 @@ npm run build
 npm run test:e2e
 ```
 
-Browser checks require Google Chrome and the API at port 8000. They exercise page navigation, saved-call details, date and wrong-call filters, stock search, note previews, and responsive layouts. Screenshots are saved to `data/screenshot-desktop.png` and `data/screenshot-mobile.png`.
+Browser checks require Google Chrome and a sample-data API at port 8000 by default; set `JOURNAL_BASE_URL` to use an isolated local port without disturbing another server. They exercise all six pages, saved-call details, keyboard focus, date and wrong-call filters, stock search, optional details, note previews, and desktop/390px layouts. Screenshots stay in the ignored project data directory.
 
-Verified at review: **74 inherited backend tests passed. The reviewed changes add regression checks for record-time cutoffs, missing sessions, negation, message escaping and provider cleanup, plus an Index lab browser check. See MEMORY.md for the latest completed check counts and deployment status.** The event tests cover corrected articles, ambiguous company names, missing expectations, the publication-to-session boundary, gap versus open-to-close reactions, cutoff-limited comparisons, syndicated duplicates and the absence of any path from notes into the daily rule. See PUBLIC_DATA.md for real-source verification. The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the isolated hosted-page checks, including index refresh and expiry. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
+Verified for the flexible-selection/interface update: **129 backend tests, 14 isolated hosted browser checks, three journal browser checks and the production frontend build passed.** Selection checks cover 1/4/10-call batches, one-sided days, deterministic ranks, unchanged saved records, empty diagnostics and once-only mock delivery. Browser checks cover actual counts, partial/empty results, nested Pages hosting, cross-origin sign-in, private export, source freshness, calculator limits and expired/disconnected index actions. Event tests retain recording-time cutoffs, missing-session rules, corrected articles, negation, expectation gaps and zero influence on daily calls. Run `.venv/bin/python scripts/check_pages.py` from the root for hosted checks. See [MEMORY.md](MEMORY.md) for the handoff and deployment status; optional ML runtime and PostgreSQL deployment are not covered.
 
 The frozen ten-day integration fixture expects **−₹150** for the model and **+₹850** for simply buying, with **50 of 100** calls right. This known losing example checks selection, resolution, costs, direction scoring, and message generation through the same functions used by the app.
 
@@ -147,6 +150,6 @@ The frozen ten-day integration fixture expects **−₹150** for the model and *
 - `backend/app/briefs.py`, `telegram_templates.md`, `brief_prompt.md` — messages and future writer contract.
 - `deploy/` — reviewable hosting templates; not installed services.
 
-Keep this private. Use `.env` for secrets and never add it to version control. The local server binds to loopback. For remote use, complete authentication and HTTPS setup before exposing it.
+The repository is public; the running journal is authenticated. Keep credentials and databases private and out of version control. The local server binds to loopback. Remote use requires authentication and HTTPS.
 
 Index paper research: see INDEX_PLAN.md for strategy `index_orb_retest_v1`, timing and risk assumptions. Yahoo index checks need no broker key. The default `INDEX_OPTION_PROVIDER=none` deliberately leaves option entries at Skip. `backend/app/index_sources.py`, `index_research.py`, `index_options.py` and `index_jobs.py` own this workflow independently of daily cash predictions. Current implementation does not track executed positions or resolve option outcomes.

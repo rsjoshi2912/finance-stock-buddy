@@ -59,3 +59,102 @@
 @media(max-width:760px){.index-signal-heading{align-items:stretch;flex-direction:column;padding:18px}.index-signal-heading h2{font-size:20px}.index-signal-card{padding:18px}.index-signal-reason{min-height:0}.index-levels{gap:6px}.index-card-title>.badge{font-size:12px}.index-levels b{font-size:13px}}
 
 .daily-call-notice{border-left:3px solid #d39a32;margin-bottom:20px}.daily-call-notice p{line-height:1.6;margin:0 24px 12px}.daily-call-notice .text-button{margin-top:4px}
+
+/* Data-first journal: compact primary views, optional detail. */
+summary {cursor:pointer;list-style:none;}
+summary::-webkit-details-marker {display:none;}
+summary:focus-visible {outline:3px solid #9bbbff;outline-offset:-3px;}
+summary::before {content:'›';display:inline-block;margin-right:10px;color:#71839b;font-size:19px;line-height:1;transition:transform .15s;}
+details[open]>summary::before {transform:rotate(90deg);}
+.section-disclosure>summary {display:flex;align-items:center;gap:4px;padding:18px 22px;font-size:13px;font-weight:600;color:#344864;}
+.section-disclosure>summary>span {margin-left:auto;font-variant-numeric:tabular-nums;}
+.section-disclosure[open]>summary {border-bottom:1px solid var(--border);}
+.details-body {padding:20px 22px;font-size:13px;line-height:1.7;color:#5c6c84;}
+.details-body>p+p {margin-top:10px;}
+.details-body>.two-columns {margin-top:4px;}
+.details-toolbar {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 22px;}
+.details-toolbar .text-button {padding:8px 0;}
+.two-columns {grid-template-columns:repeat(2,minmax(0,1fr));}
+.calls-grid {align-items:start;}
+.calls-grid.single-direction {grid-template-columns:minmax(0,1fr);}
+.call-row {display:grid;grid-template-columns:34px minmax(0,1fr) 43px 15px;column-gap:11px;row-gap:7px;padding:15px 20px;}
+.call-row .stock-avatar {grid-column:1;grid-row:1;width:32px;height:32px;}
+.call-row .call-name {grid-column:2;grid-row:1;}
+.call-row .call-name>span {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.call-row .call-confidence {grid-column:3;grid-row:1;}
+.call-row>svg {grid-column:4;grid-row:1;}
+.call-price-range {grid-column:2 / 4;grid-row:2;display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 12px;font-variant-numeric:tabular-nums;}
+.call-price-range strong {font-size:11px;font-weight:500;color:#425773;}
+.call-price-range small {font-size:10px;color:var(--muted);}
+.metrics {margin-top:4px;margin-bottom:20px;}
+.metric-value-row {min-height:48px;}
+.market-overview {margin-top:26px;}
+.fetch-latest {margin-bottom:18px;}
+.fetch-toolbar {display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.fetch-toolbar h2 {font-size:16px;}
+.fetch-summary {font-size:12px;color:var(--muted);line-height:1.6;margin-top:5px;}
+.fetch-result {margin-top:10px;padding:0;font-size:12px;}
+.fetch-result summary {font-weight:500;color:#526781;}
+.fetch-result>p,.fetch-result>small {padding-left:20px;}
+.quote-grid {grid-template-columns:repeat(auto-fit,minmax(155px,1fr));}
+.quote-item {padding:14px 18px;gap:6px;}
+.quote-item b {font-size:18px;}
+.quote-stale {color:#8a6528!important;}
+.source-details {padding:12px 22px;border-top:1px solid var(--border);font-size:12px;color:#62748c;line-height:1.7;}
+.source-details>p {margin-top:8px;}
+.news-sources {padding-bottom:12px;}
+.news-list a {font-size:13px;}
+.performance-strip {display:flex;flex-wrap:wrap;gap:18px;padding:16px 22px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);}
+.performance-strip strong {margin-left:6px;color:#364a65;}
+.call-provenance {margin:24px 0;font-size:12px;color:#566b87;line-height:1.7;}
+.call-provenance summary {font-weight:600;padding:10px 0;}
+.method-summary {font-size:12px;line-height:1.7;color:#66778e;margin:10px 0 16px;}
+.preview-caption {font-size:12px;color:var(--muted);padding:15px 22px;}
+.event-reaction {font-size:12px;color:#536880;line-height:1.7;margin-top:8px;}
+.event-details {font-size:12px;line-height:1.7;margin-top:12px;color:#596e8a;}
+.event-details summary {font-weight:500;}
+.event-notes .pattern-strip {padding:12px 0 4px;}
+.index-signal-heading {padding:0 0 16px;}
+.index-signal-heading h2 {font-size:16px;display:flex;align-items:center;gap:8px;margin:0 0 4px;}
+.index-signals .option-feed-status {font-size:12px;color:#66758b;margin:0 0 18px;}
+.index-signal-reason {min-height:0;padding:14px 0;}
+.index-option-result {padding:12px 14px;}
+.index-option-result>strong {font-size:13px;}
+.index-signal-history {padding:0;}
+.index-signal-history>p {padding:0 22px 14px;}
+.index-preview-action {margin:16px 0;}
+.index-calculator {padding-top:8px;}
+.index-calculator .index-results {align-self:start;}
+.index-results h3 {font-size:16px;}
+.index-results dd {margin-left:0;font-size:18px;}
+.goal-details {margin-top:20px;font-size:12px;}
+.goal-details summary {font-weight:600;}
+.goal-details label {display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.goal-details input {padding:9px 10px;border:1px solid #ccd6e3;border-radius:7px;background:white;max-width:220px;}
+.calculator-note {padding:0 24px 20px;font-size:12px;color:var(--muted);}
+.dataset-label {font-size:11px;white-space:normal;}
+footer {padding-bottom:42px;}
+@media(max-width:720px) {
+	.two-columns {grid-template-columns:minmax(0,1fr);}
+	.topbar {gap:10px;}
+	.topbar-parent,.topbar-parent+svg {display:none;}
+	.dataset-label {font-size:10px;max-width:155px;}
+	.section-disclosure>summary {padding:16px;font-size:12px;flex-wrap:wrap;}
+	.details-body {padding:16px;}
+	.details-toolbar {padding:10px 16px;flex-wrap:wrap;}
+	.call-row {padding:14px 16px;grid-template-columns:32px minmax(0,1fr) 38px 12px;column-gap:9px;}
+	.call-price-range {column-gap:8px;}
+	.fetch-toolbar {align-items:flex-start;gap:12px;}
+	.fetch-toolbar>.button {flex-shrink:0;padding:10px;font-size:11px;}
+	.fetch-toolbar h2 {font-size:14px;}
+	.quote-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+	.quote-item {padding:12px;}
+	.source-details {padding:12px 16px;}
+	.performance-strip {display:grid;grid-template-columns:1fr 1fr;padding:15px;gap:12px;font-size:11px;}
+	.performance-strip strong {display:block;margin:4px 0 0;}
+	.daily-call-notice p {margin-left:17px;margin-right:17px;}
+	.index-signal-heading {padding:0 0 16px;}
+	.index-signal-heading h2 {font-size:16px;}
+	.index-signal-history {padding:0;}
+	.calculator-note {padding:0 18px 18px;}
+}

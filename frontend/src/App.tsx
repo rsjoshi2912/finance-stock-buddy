@@ -1,123 +1,376 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import EventNotes from './EventNotes';
-import IndexLab from './IndexLab';
-import TelegramPreview from './TelegramPreview';
-import { Activity, ArrowDownLeft, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BookOpen, CalendarDays, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock3, Download, ExternalLink, FlaskConical, History, Info, LayoutDashboard, LockKeyhole, Menu, Search, Send, ShieldCheck, Sparkles, Target, TrendingUp, X } from 'lucide-react';
+import { Activity, ArrowDownRight, ArrowRight, ArrowUpRight, BarChart3, BookOpen, CalendarDays, Check, CheckCheck, ChevronLeft, ChevronRight, CircleHelp, Clock3, Download, ExternalLink, FlaskConical, History, Info, LayoutDashboard, LockKeyhole, Menu, Search, Send, Sparkles, Target, TrendingUp, X } from 'lucide-react';
 import { Area, Bar, BarChart, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Scatter, Tooltip, XAxis, YAxis } from 'recharts';
 import type { Call, Dashboard, Health, Point, Stock, Summary, Track } from './types';
-import { api, downloadCalls, remoteApi } from './api';
-import LivePrices from './LivePrices';
-import LatestNews from './LatestNews';
+import { api, downloadCalls } from './api';
+import EventNotes from './EventNotes';
 import FetchLatest from './FetchLatest';
+import IndexLab from './IndexLab';
+import LatestNews from './LatestNews';
+import LivePrices from './LivePrices';
+import TelegramPreview from './TelegramPreview';
 
-const money=(n:number|null|undefined,sign=true)=>n==null?'—':`${n<0?'−':sign&&n>0?'+':''}₹${Math.abs(n).toLocaleString('en-IN',{maximumFractionDigits:2,minimumFractionDigits:2})}`;
-const price=(n:number)=>`₹${n.toLocaleString('en-IN',{maximumFractionDigits:2})}`;
-const shortDate=(s:string)=>new Date(`${s}T12:00:00`).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
-const fullDate=(s:string)=>new Date(`${s}T12:00:00`).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-const tone=(n:number|null|undefined)=>n==null?'muted':n<0?'negative':n>0?'positive':'muted';
-const nav=[{id:'today',label:'Today',icon:LayoutDashboard},{id:'record',label:'Track record',icon:BarChart3},{id:'history',label:'Calls by day',icon:CalendarDays},{id:'stock',label:'Look up a stock',icon:Search},{id:'indices',label:'Index lab',icon:TrendingUp},{id:'health',label:'System health',icon:Activity}] as const;
-type Page=typeof nav[number]['id'];
+const money = (n: number | null | undefined, sign = true) => n == null ? '—' : `${n < 0 ? '−' : sign && n > 0 ? '+' : ''}₹${Math.abs(n).toLocaleString('en-IN', {maximumFractionDigits: 2, minimumFractionDigits: 2})}`;
+const price = (n: number) => `₹${n.toLocaleString('en-IN', {maximumFractionDigits: 2})}`;
+const shortDate = (s: string) => new Date(`${s}T12:00:00`).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'});
+const fullDate = (s: string) => new Date(`${s}T12:00:00`).toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+const tone = (n: number | null | undefined) => n == null ? 'muted' : n < 0 ? 'negative' : n > 0 ? 'positive' : 'muted';
+const level = (call: Call, value: number) => call.kind === 'index' ? `${value.toLocaleString('en-IN', {maximumFractionDigits: 2})} pts` : price(value);
+const nav = [
+  {id: 'today', label: 'Today', icon: LayoutDashboard},
+  {id: 'record', label: 'Track record', icon: BarChart3},
+  {id: 'history', label: 'Calls by day', icon: CalendarDays},
+  {id: 'stock', label: 'Look up a stock', icon: Search},
+  {id: 'indices', label: 'Index lab', icon: TrendingUp},
+  {id: 'health', label: 'System health', icon: Activity},
+] as const;
+type Page = typeof nav[number]['id'];
 
-function useApi<T>(path:string,refreshMs=0){
-  const [data,setData]=useState<T|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0);
-  useEffect(()=>{let active=true;setLoading(true);setError('');const load=()=>api<T>(path).then(x=>{if(active){setData(x);setError('')}}).catch(e=>{if(active)setError(e.message)}).finally(()=>{if(active)setLoading(false)});void load();const timer=refreshMs?setInterval(()=>{if(!document.hidden)void load()},refreshMs):undefined;return()=>{active=false;if(timer)clearInterval(timer)}},[path,revision,refreshMs]);
-  return {data,error,loading,reload:()=>setRevision(x=>x+1)};
+function useApi<T>(path: string, refreshMs = 0) {
+  const [data, setData] = useState<T | null>(null), [error, setError] = useState('');
+  const [loading, setLoading] = useState(true), [revision, setRevision] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setLoading(true); setError('');
+    const load = () => api<T>(path).then(value => {
+      if (active) {setData(value); setError('');}
+    }).catch(e => {if (active) setError(e.message);}).finally(() => {if (active) setLoading(false);});
+    void load();
+    const timer = refreshMs ? setInterval(() => {if (!document.hidden) void load();}, refreshMs) : undefined;
+    return () => {active = false; if (timer) clearInterval(timer);};
+  }, [path, revision, refreshMs]);
+  return {data, error, loading, reload: () => setRevision(x => x + 1)};
 }
-function Badge({children,tint='neutral'}:{children:ReactNode;tint?:string}){return <span className={`badge ${tint}`}>{children}</span>}
-function Panel({title,subtitle,action,children,className=''}:{title?:string;subtitle?:string;action?:ReactNode;children:ReactNode;className?:string}){return <section className={`panel ${className}`}>{title&&<div className="panel-head"><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div>{action}</div>}{children}</section>}
-function Empty({title='Nothing here yet',children}:{title?:string;children?:ReactNode}){return <div className="empty"><BookOpen size={30}/><h3>{title}</h3><p>{children||'The journal will fill in as calls and results arrive.'}</p></div>}
-function Failure({message,retry}:{message:string;retry:()=>void}){return <div className="error-box" role="alert"><Info size={20}/><div><strong>Couldn’t load this page</strong><p>{message}</p><button className="button secondary small" onClick={retry}>Try again</button></div></div>}
-function Loading(){return <div className="skeleton-grid" aria-label="Loading journal" role="status"><div/><div/><div/><div/><div className="wide"/></div>}
-function Result({call}:{call:Call}){return <Badge tint={call.result==='Right'?'green':call.result==='Wrong'?'red':'neutral'}>{call.result==='Right'?<Check size={12}/>:call.result==='Wrong'?<X size={12}/>:<Clock3 size={12}/>} {call.result}</Badge>}
-function Avatar({symbol,index=0}:{symbol:string;index?:number}){return <span className={`stock-avatar hue-${index%5}`}>{symbol.slice(0,2)}</span>}
-function MiniLine({points,color='#2d70e8'}:{points:number[];color?:string}){
-  if(points.length<2)return null;const low=Math.min(...points),span=Math.max(...points)-low||1;
-  return <svg width="92" height="32" viewBox="0 0 92 32" aria-hidden="true"><polyline points={points.map((v,i)=>`${i/(points.length-1)*90+1},${30-(v-low)/span*27}`).join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/></svg>
-}
-function Metrics({summary,last,showTotal=false}:{summary:Summary;last?:Summary;showTotal?:boolean}){
-  const s=last||summary,values=[{title:showTotal?'Total paper result':'Last day’s paper result',value:money(s.pnl),note:'After assumed trading costs',icon:TrendingUp,tone:tone(s.pnl),line:summary.equity.map(x=>x.model)},
-    {title:'Simply buying',value:money(s.baseline_pnl),note:'Same stocks. Same amount.',icon:ArrowUpRight,tone:tone(s.baseline_pnl),line:summary.equity.map(x=>x.baseline)},
-    {title:'Calls that were right',value:`${s.right} / ${s.total}`,note:`${s.accuracy??'—'}% · simply buying ${s.baseline_accuracy??'—'}%`,icon:Target,tone:'',line:[]},
-    {title:'Days in the journal',value:`${summary.days}`,note:`${summary.winning_days} up · ${summary.losing_days} down`,icon:CalendarDays,tone:'',line:[]}];
-  return <div className="metrics">{values.map(v=><div className="metric" key={v.title}><div className="metric-label">{v.title}<v.icon size={16}/></div><div className="metric-value-row"><strong className={v.tone}>{v.value}</strong><MiniLine points={v.line.slice(-20)} color={v.tone==='negative'?'#dc797b':'#46aa93'}/></div><p>{v.note}</p></div>)}</div>
-}
-function MoneyChart({points}:{points:Point[]}){
-  if(!points.length)return <Empty title="The comparison starts with the first result"/>;
-  return <div className="chart" aria-label="Cumulative paper result compared with simply buying"><ResponsiveContainer width="100%" height={240}><ComposedChart data={points} margin={{top:12,right:12,bottom:0,left:-10}}><defs><linearGradient id="blueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#427bec" stopOpacity={.13}/><stop offset="100%" stopColor="#427bec" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 5" vertical={false} stroke="#e9edf3"/><XAxis dataKey="date" tickFormatter={shortDate} minTickGap={50} axisLine={false} tickLine={false} tick={{fontSize:11,fill:'#8b95a6'}} dy={9}/><YAxis tickFormatter={n=>`₹${n}`} axisLine={false} tickLine={false} tick={{fontSize:11,fill:'#8b95a6'}}/><Tooltip labelFormatter={label=>shortDate(String(label))} formatter={(value,name)=>[money(Number(value)),name==='model'?'Our calls':'Simply buying']} contentStyle={{borderRadius:12,border:'1px solid #e6eaf0',fontSize:12}}/><ReferenceLine y={0} stroke="#b7c0ce" strokeDasharray="4 4"/><Area isAnimationActive={false} dataKey="model" type="monotone" fill="url(#blueFill)" stroke="#3972e2" strokeWidth={2.3}/><Line isAnimationActive={false} dataKey="baseline" type="monotone" stroke="#9faabc" strokeWidth={2} strokeDasharray="5 4" dot={false}/></ComposedChart></ResponsiveContainer></div>
-}
-function Legend(){return <div className="legend"><span><i className="blue-dot"/>Our calls</span><span><i className="gray-dot"/>Simply buying</span></div>}
 
-function CallList({calls,direction,open}:{calls:Call[];direction:'UP'|'DOWN';open:(c:Call)=>void}){
-  const selected=calls.filter(x=>x.direction===direction).sort((a,b)=>(a.rank||0)-(b.rank||0));
-  return <Panel className="call-panel"><div className="call-heading"><div><span className={`direction-icon ${direction==='UP'?'green':'red'}`}>{direction==='UP'?<ArrowUpRight size={19}/>:<ArrowDownRight size={19}/>}</span><h2>{direction==='UP'?'Buy calls':'Sell calls'} <span>{selected.length}</span></h2></div><span className="muted small-text">Estimated confidence</span></div>{selected.length?selected.map((c,i)=><button className="call-row" key={c.id} onClick={()=>open(c)}><Avatar symbol={c.symbol} index={i+(direction==='DOWN'?2:0)}/><span className="call-name"><strong>{c.symbol}{c.kind==='index'&&<em>Index</em>}</strong><span>{c.name}</span></span><span className="call-confidence"><strong>{c.confidence}%</strong><span className="confidence-track"><i style={{width:`${c.confidence}%`}}/></span></span><ChevronRight size={15} className="muted"/></button>):<Empty title="Calls are not ready"/>}<div className="call-footer"><Clock3 size={13}/> Open to close <span>Tap a call to see the full picture <ArrowRight size={13}/></span></div></Panel>
+function Badge({children, tint = 'neutral'}: {children: ReactNode; tint?: string}) {
+  return <span className={`badge ${tint}`}>{children}</span>;
 }
-function CallsTable({calls,open}:{calls:Call[];open:(c:Call)=>void}){
-  return calls.length?<div className="table-scroll"><table><thead><tr><th>Stock</th><th>Call</th><th>Confidence</th><th>Result</th><th className="align-right">Our call</th><th className="align-right">Simply buying</th><th/></tr></thead><tbody>{calls.map(c=><tr key={c.id}><td><button className="table-stock" onClick={()=>open(c)}><strong>{c.symbol}</strong><span>{c.name}</span></button></td><td><span className={c.direction==='UP'?'positive':'negative'}>{c.direction==='UP'?'Buy':'Sell'}</span></td><td>{c.confidence}%</td><td><Result call={c}/></td><td className={`align-right tabular ${tone(c.pnl)}`}>{c.kind==='index'?<span className="muted">Not traded</span>:money(c.pnl)}</td><td className="align-right tabular muted">{c.kind==='index'?'—':money(c.baseline_pnl)}</td><td><button className="icon-button" aria-label={`View ${c.symbol} call`} onClick={()=>open(c)}><ChevronRight size={16}/></button></td></tr>)}</tbody></table></div>:<Empty title="No calls match this view">Try a different filter or date.</Empty>
+function Panel({title, subtitle, action, children, className = ''}: {title?: string; subtitle?: string; action?: ReactNode; children: ReactNode; className?: string}) {
+  return <section className={`panel ${className}`}>
+    {title && <div className="panel-head"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>}
+    {children}
+  </section>;
 }
-function DailyCallNotice({data,navigate}:{data:Dashboard;navigate:(p:Page)=>void}){
-  if(data.mode!=='live'||data.calls.length||!data.daily_status)return null;
-  const status=data.daily_status;
-  return <Panel className="daily-call-notice" title={status.status==='waiting'?'Waiting for the morning check':'No stock calls today'}>
-    <p>{status.reason}</p><p className="muted small-text">{status.telegram==='sent'?'Telegram confirmed today’s notification.':status.telegram==='unconfirmed'?'Telegram delivery is unconfirmed. We will not retry automatically to avoid duplicates.':'No Telegram notification has been sent for today.'}</p>
-    <button className="text-button" onClick={()=>navigate('history')}>See previous calls <ArrowRight size={14}/></button>
+function Empty({title = 'No records yet', children}: {title?: string; children?: ReactNode}) {
+  return <div className="empty"><BookOpen size={26}/><h3>{title}</h3>{children && <p>{children}</p>}</div>;
+}
+function Failure({message, retry}: {message: string; retry: () => void}) {
+  return <div className="error-box" role="alert"><Info size={20}/><div><strong>Couldn’t load this page</strong><p>{message}</p><button className="button secondary small" onClick={retry}>Try again</button></div></div>;
+}
+function Loading() {
+  return <div className="skeleton-grid" aria-label="Loading journal" role="status"><div/><div/><div/><div/><div className="wide"/></div>;
+}
+function Result({call}: {call: Call}) {
+  return <Badge tint={call.result === 'Right' ? 'green' : call.result === 'Wrong' ? 'red' : 'neutral'}>
+    {call.result === 'Right' ? <Check size={12}/> : call.result === 'Wrong' ? <X size={12}/> : <Clock3 size={12}/>} {call.result}
+  </Badge>;
+}
+function Avatar({symbol, index = 0}: {symbol: string; index?: number}) {
+  return <span className={`stock-avatar hue-${index % 5}`}>{symbol.slice(0, 2)}</span>;
+}
+function Metrics({summary, last, showTotal = false, resultLabel = 'Last session'}: {summary: Summary; last?: Summary; showTotal?: boolean; resultLabel?: string}) {
+  const s = last || summary, hasResults = s.days > 0;
+  const values = [
+    {title: showTotal ? 'Total result' : resultLabel, value: money(hasResults ? s.pnl : null), note: s.pending ? `${s.pending} ${s.pending === 1 ? 'call' : 'calls'} pending` : hasResults ? 'After trading costs' : 'No resolved session', icon: TrendingUp, tint: tone(hasResults ? s.pnl : null)},
+    {title: 'Simply buying', value: money(hasResults ? s.baseline_pnl : null), note: 'Same stocks and allocation', icon: ArrowUpRight, tint: tone(hasResults ? s.baseline_pnl : null)},
+    {title: 'Calls right', value: s.total ? `${s.right} / ${s.total}` : '—', note: s.total ? `${s.accuracy}% · simply buying ${s.baseline_accuracy}%` : 'Awaiting results', icon: Target, tint: ''},
+    {title: 'Recorded sessions', value: `${summary.days}`, note: `${summary.winning_days} positive · ${summary.losing_days} negative`, icon: CalendarDays, tint: ''},
+  ];
+  return <div className="metrics">{values.map(v => <div className="metric" key={v.title}>
+    <div className="metric-label">{v.title}<v.icon size={16}/></div>
+    <div className="metric-value-row"><strong className={v.tint}>{v.value}</strong></div><p>{v.note}</p>
+  </div>)}</div>;
+}
+function Legend() {
+  return <div className="legend"><span><i className="blue-dot"/>Our calls</span><span><i className="gray-dot"/>Simply buying</span></div>;
+}
+function MoneyChart({points}: {points: Point[]}) {
+  if (!points.length) return <Empty title="No completed results yet"/>;
+  return <div className="chart" aria-label="Cumulative result compared with simply buying">
+    <ResponsiveContainer width="100%" height={240}><ComposedChart data={points} margin={{top: 12, right: 12, bottom: 0, left: -10}}>
+      <defs><linearGradient id="blueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#427bec" stopOpacity={.13}/><stop offset="100%" stopColor="#427bec" stopOpacity={0}/></linearGradient></defs>
+      <CartesianGrid strokeDasharray="3 5" vertical={false} stroke="#e9edf3"/>
+      <XAxis dataKey="date" tickFormatter={shortDate} minTickGap={50} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#8b95a6'}} dy={9}/>
+      <YAxis tickFormatter={n => `₹${n}`} axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#8b95a6'}}/>
+      <Tooltip labelFormatter={label => shortDate(String(label))} formatter={(value, name) => [money(Number(value)), name === 'model' ? 'Our calls' : 'Simply buying']}/>
+      <ReferenceLine y={0} stroke="#b7c0ce" strokeDasharray="4 4"/>
+      <Area isAnimationActive={false} dataKey="model" type="monotone" fill="url(#blueFill)" stroke="#3972e2" strokeWidth={2.3}/>
+      <Line isAnimationActive={false} dataKey="baseline" type="monotone" stroke="#9faabc" strokeWidth={2} strokeDasharray="5 4" dot={false}/>
+    </ComposedChart></ResponsiveContainer>
+  </div>;
+}
+
+function CallList({calls, direction, open}: {calls: Call[]; direction: 'UP' | 'DOWN'; open: (call: Call) => void}) {
+  const selected = calls.filter(x => x.direction === direction).sort((a, b) => (a.rank || 0) - (b.rank || 0));
+  if (!selected.length) return null;
+  return <Panel className="call-panel">
+    <div className="call-heading"><div><span className={`direction-icon ${direction === 'UP' ? 'green' : 'red'}`}>{direction === 'UP' ? <ArrowUpRight size={19}/> : <ArrowDownRight size={19}/>}</span><h2>{direction === 'UP' ? 'Buy calls' : 'Sell calls'} <span>{selected.length}</span></h2></div><span className="muted small-text">Rule score</span></div>
+    {selected.map((call, index) => <button className="call-row" key={call.id} onClick={() => open(call)}>
+      <Avatar symbol={call.symbol} index={index}/>
+      <span className="call-name"><strong>{call.symbol}{call.kind === 'index' && <em>Index</em>}</strong><span>{call.name}</span></span>
+      <span className="call-price-range"><strong>{level(call, call.expected_low)} – {level(call, call.expected_high)}</strong><small>Alert {level(call, call.stop)}</small></span>
+      <span className="call-confidence"><strong>{call.confidence}%</strong></span><ChevronRight size={15} className="muted"/>
+    </button>)}
   </Panel>;
 }
-
-function Today({data,open,navigate}:{data:Dashboard;open:(c:Call)=>void;navigate:(p:Page)=>void}){
-  const [wrong,setWrong]=useState(false);const s=data.summary;
-  return <><section className="verdict"><div className="verdict-intro"><span className="verdict-symbol"><ShieldCheck size={23}/></span><div><span className="eyebrow">THE HONEST CHECK</span><h2>{data.verdict.title}</h2><p>{data.verdict.description}</p></div><Badge tint="blue">Learning mode</Badge></div><div className="verdict-checks">{data.verdict.checks.map(c=><div key={c.label}><span className={`check-circle ${c.passed?'passed':''}`}>{c.passed?<Check size={13}/>:<span/>}</span><span><strong>{c.label}</strong><small>{c.value}</small></span></div>)}</div></section>
-    <Metrics summary={s} last={data.yesterday_summary}/>
-    {data.calls.length>0&&<><div className="section-title"><div><h2>The next calls to watch</h2><p>Five in each direction. Every one will be scored.</p></div><Badge><Clock3 size={13}/> Data through 07:00 IST</Badge></div>
-    <div className="two-columns"><CallList calls={data.calls} direction="UP" open={open}/><CallList calls={data.calls} direction="DOWN" open={open}/></div>
-    <div className="quiet-note"><Info size={15}/><span>₹1,000 of pretend money per stock call. Indices are scored for direction only. Confidence is an estimate, not a promise.</span></div></>}
-    <div className="chart-layout"><Panel title="Is it adding anything?" subtitle="Running total after assumed costs" action={<Legend/>}><MoneyChart points={s.equity}/><div className="chart-bottom"><span>Compared with buying the same stocks</span><strong className={tone(s.difference)}>{money(s.difference)} difference</strong></div></Panel><Panel title="Good days. Bad days." subtitle="Both belong in the journal." className="day-panel"><div className="day-count"><strong>{s.winning_days}<small>days up</small></strong><span>/</span><strong>{s.losing_days}<small>days down</small></strong></div><div className="day-strip" aria-label="Results for the last 20 recorded days">{s.equity.slice(-20).map(x=><span className={x.daily>=0?'win':'loss'} key={x.date} title={`${shortDate(x.date)}: ${money(x.daily)}`}><span>{shortDate(x.date)}<b>{money(x.daily)}</b></span></span>)}</div><p className="muted small-text">Last 20 recorded days · hover for results</p><div className="day-detail"><span>Best day</span><strong className="positive">{money(s.best_day)}</strong></div><div className="day-detail"><span>Worst day</span><strong className="negative">{money(s.worst_day)}</strong></div><button className="text-button" onClick={()=>navigate('record')}>See the whole track record <ArrowRight size={15}/></button></Panel></div>
-    <Panel title="The last day, without the edits" subtitle={data.previous_date?`${fullDate(data.previous_date)} · all original calls are kept`:'Closing results will appear here'} action={<label className="switch-label"><input type="checkbox" checked={wrong} onChange={e=>setWrong(e.target.checked)}/><span className="switch"/>Only wrong calls</label>}><CallsTable calls={data.yesterday.filter(c=>!wrong||c.result==='Wrong')} open={open}/></Panel></>
+function CallsTable({calls, open}: {calls: Call[]; open: (call: Call) => void}) {
+  if (!calls.length) return <Empty title="No calls match this view"/>;
+  return <div className="table-scroll"><table><thead><tr><th>Stock</th><th>Call</th><th>Rule score</th><th>Result</th><th className="align-right">Our call</th><th className="align-right">Simply buying</th><th/></tr></thead>
+    <tbody>{calls.map(call => <tr key={call.id}>
+      <td><button className="table-stock" onClick={() => open(call)}><strong>{call.symbol}</strong><span>{call.name}</span></button></td>
+      <td><span className={call.direction === 'UP' ? 'positive' : 'negative'}>{call.direction === 'UP' ? 'Buy' : 'Sell'}</span></td>
+      <td>{call.confidence}%</td><td><Result call={call}/></td>
+      <td className={`align-right tabular ${tone(call.pnl)}`}>{call.kind === 'index' ? <span className="muted">Direction only</span> : money(call.pnl)}</td>
+      <td className="align-right tabular muted">{call.kind === 'index' ? '—' : money(call.baseline_pnl)}</td>
+      <td><button className="icon-button" aria-label={`View ${call.symbol} call`} onClick={() => open(call)}><ChevronRight size={16}/></button></td>
+    </tr>)}</tbody></table></div>;
+}
+function DailyCallNotice({data, navigate}: {data: Dashboard; navigate: (page: Page) => void}) {
+  if (data.calls.length) return null;
+  const status = data.daily_status;
+  return <Panel className="daily-call-notice" title={status?.status === 'waiting' ? 'Morning checks pending' : 'No stock calls today'}>
+    <p>{status?.reason || 'No morning calls have been saved yet.'}</p>
+    {data.mode === 'live' && status && <p className="muted small-text">{status.telegram === 'sent' ? 'Telegram: delivered' : status.telegram === 'unconfirmed' ? 'Telegram: delivery unconfirmed · check before retrying' : 'Telegram: not sent'}</p>}
+    {data.dates.length > 0 && <button className="text-button" onClick={() => navigate('history')}>See previous calls <ArrowRight size={14}/></button>}
+  </Panel>;
+}
+function Today({data, open, navigate}: {data: Dashboard; open: (call: Call) => void; navigate: (page: Page) => void}) {
+  const [wrong, setWrong] = useState(false);
+  const buys = data.calls.filter(call => call.direction === 'UP').length;
+  const sells = data.calls.length - buys;
+  const allocation = data.calls.reduce((sum, call) => sum + (call.kind === 'stock' ? call.allocation : 0), 0);
+  const hasTodayResults = data.calls.some(call => call.result !== 'Pending');
+  return <>
+    <DailyCallNotice data={data} navigate={navigate}/>
+    {data.calls.length > 0 && <section aria-label="Daily calls">
+      <div className="section-title"><div><h2>{data.calls.length} {data.calls.length === 1 ? 'call' : 'calls'} · {buys} Buy / {sells} Sell</h2><p>Open → close · {money(allocation, false)} stock allocation</p></div><Badge><Clock3 size={13}/> Cutoff 07:00 IST</Badge></div>
+      <div className={`two-columns calls-grid ${!buys || !sells ? 'single-direction' : ''}`}><CallList calls={data.calls} direction="UP" open={open}/><CallList calls={data.calls} direction="DOWN" open={open}/></div>
+    </section>}
+    <Metrics summary={data.summary} last={hasTodayResults && data.today_summary ? data.today_summary : data.yesterday_summary} resultLabel={hasTodayResults && data.today_summary ? 'Today’s result' : 'Last session'}/>
+    {hasTodayResults && <details className="panel section-disclosure"><summary>Today’s results</summary><CallsTable calls={data.calls} open={open}/></details>}
+    {data.yesterday.length > 0 && <details className="panel section-disclosure previous-results">
+      <summary>Previous results · {shortDate(data.previous_date!)}<span>{money(data.yesterday_summary.days ? data.yesterday_summary.pnl : null)}</span></summary>
+      <div className="details-toolbar"><label className="switch-label"><input type="checkbox" checked={wrong} onChange={e => setWrong(e.target.checked)}/><span className="switch"/>Only wrong calls</label><button className="text-button" onClick={() => navigate('record')}>Track record <ArrowRight size={14}/></button></div>
+      <CallsTable calls={data.yesterday.filter(call => !wrong || call.result === 'Wrong')} open={open}/>
+    </details>}
+    {data.mode === 'live' && <section className="market-overview" aria-label="Market data">
+      <FetchLatest/><LivePrices symbols={data.calls.map(call => call.symbol)}/><LatestNews/>
+    </section>}
+  </>;
 }
 
-function RecordPage(){
-  const {data,error,loading,reload}=useApi<Track>('track-record');if(error)return <Failure message={error} retry={reload}/>;if(loading||!data)return <Loading/>;
-  const s=data.summary;
-  return <><Metrics summary={s} showTotal/><div className="two-columns"><Panel title="How often was it right?" subtitle="Last 30 recorded days at each point" action={<Legend/>}><div className="chart"><ResponsiveContainer width="100%" height={260}><ComposedChart data={data.rolling} margin={{right:20,left:-15,top:20}}><CartesianGrid vertical={false} strokeDasharray="3 5" stroke="#e9edf3"/><XAxis dataKey="date" tickFormatter={shortDate} minTickGap={55} tick={{fontSize:11}} axisLine={false} tickLine={false}/><YAxis domain={[0,100]} tickFormatter={n=>`${n}%`} tick={{fontSize:11}} axisLine={false} tickLine={false}/><Tooltip formatter={(v,n)=>[`${v}%`,n==='model'?'Our calls':'Simply buying']} labelFormatter={x=>shortDate(String(x))}/><Line isAnimationActive={false} dataKey="model" stroke="#3972e2" strokeWidth={2.2} dot={false}/><Line isAnimationActive={false} dataKey="baseline" stroke="#a4afbf" strokeDasharray="5 4" dot={false}/></ComposedChart></ResponsiveContainer></div></Panel><Panel title="Is its confidence honest?" subtitle="If it says 60%, is it right around 60% of the time?"><div className="legend chart-legend"><span><i className="blue-dot"/>What it said</span><span><i className="teal-dot"/>What happened</span></div><ResponsiveContainer width="100%" height={230}><BarChart data={data.calibration} margin={{right:20,left:-15}}><CartesianGrid vertical={false} strokeDasharray="3 5" stroke="#e9edf3"/><XAxis dataKey="label" tick={{fontSize:11}} axisLine={false} tickLine={false}/><YAxis domain={[0,100]} tickFormatter={n=>`${n}%`} tick={{fontSize:11}} axisLine={false} tickLine={false}/><Tooltip formatter={(v,n)=>[`${v}%`,n==='expected'?'What it said':'What happened']}/><Bar isAnimationActive={false} dataKey="expected" fill="#79a0f0" radius={[4,4,0,0]}/><Bar isAnimationActive={false} dataKey="actual" fill="#80c6b6" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer><p className="panel-footnote">{data.calibration.map(x=>`${x.label}: ${x.count} calls`).join(' · ')}</p></Panel></div>
-    <Panel title="Month by month" subtitle="Money after assumed costs. Personal income tax is not included."><div className="table-scroll"><table><thead><tr><th>Month</th><th>Calls right</th><th>Days up / down</th><th className="align-right">Our calls</th><th className="align-right">Simply buying</th><th className="align-right">Difference</th></tr></thead><tbody>{data.months.map(m=><tr key={m.month}><td><strong>{new Date(`${m.month}-01T12:00:00`).toLocaleDateString('en-IN',{month:'long',year:'numeric'})}</strong></td><td>{m.right} of {m.total} <span className="muted">({m.accuracy}%)</span></td><td>{m.winning_days} / {m.losing_days}</td><td className={`align-right ${tone(m.pnl)}`}>{money(m.pnl)}</td><td className="align-right muted">{money(m.baseline_pnl)}</td><td className={`align-right ${tone(m.difference)}`}>{money(m.difference)}</td></tr>)}</tbody></table></div></Panel>
-    <div className="two-columns"><Panel title="Where does it do better?" subtitle="The same check, split into smaller groups.">{data.groups.map(g=><div className="group-row" key={g.name}><div><strong>{g.name}</strong><small>{g.total} scored calls</small></div><div><strong>{g.accuracy}% right</strong><small>Simply buying: {g.baseline_accuracy}%</small></div><span className={tone(g.pnl)}>{money(g.pnl)}</span></div>)}<p className="panel-footnote">Results-day and fearful-day checks need verified event and market data.</p></Panel><Panel title="Why calls went wrong" subtitle="An explanation needs evidence, too.">{data.causes.map(c=><div className="cause-row" key={c.name}><span className="cause-icon"><CircleHelp size={20}/></span><div><strong>{c.name}</strong><p>Price went the other way. We cannot establish why.</p></div><Badge>{c.count}</Badge></div>)}<div className="inset-note"><Info size={16}/><p>We don’t invent a news story to explain a loss. Uncertain causes stay uncertain.</p></div><div className="risk-number"><span>Largest fall from a previous high</span><strong className="negative">{money(-s.max_drawdown)}</strong></div></Panel></div></>
+function RecordPage() {
+  const {data, error, loading, reload} = useApi<Track>('track-record');
+  if (error) return <Failure message={error} retry={reload}/>;
+  if (loading || !data) return <Loading/>;
+  const summary = data.summary;
+  return <><Metrics summary={summary} showTotal/>
+    <Panel title="Cumulative result" subtitle="After trading costs" action={<Legend/>}>
+      <MoneyChart points={summary.equity}/>
+      {summary.days > 0 && <div className="performance-strip"><span>Difference <strong className={tone(summary.difference)}>{money(summary.difference)}</strong></span><span>Best day <strong>{money(summary.best_day)}</strong></span><span>Worst day <strong>{money(summary.worst_day)}</strong></span><span>Max drawdown <strong>{money(-summary.max_drawdown)}</strong></span></div>}
+    </Panel>
+    <Panel title="Monthly results">
+      {data.months.length ? <div className="table-scroll"><table><thead><tr><th>Month</th><th>Calls right</th><th>Positive / negative days</th><th className="align-right">Our calls</th><th className="align-right">Simply buying</th><th className="align-right">Difference</th></tr></thead><tbody>{data.months.map(month => <tr key={month.month}>
+        <td>{new Date(`${month.month}-01T12:00:00`).toLocaleDateString('en-IN', {month: 'long', year: 'numeric'})}</td><td>{month.right} / {month.total}</td><td>{month.winning_days} / {month.losing_days}</td><td className={`align-right ${tone(month.pnl)}`}>{money(month.pnl)}</td><td className="align-right muted">{money(month.baseline_pnl)}</td><td className={`align-right ${tone(month.difference)}`}>{money(month.difference)}</td>
+      </tr>)}</tbody></table></div> : <Empty title="No completed sessions"/>}
+    </Panel>
+    <details className="panel section-disclosure"><summary>Accuracy and breakdowns</summary><div className="details-body">
+      <div className="two-columns">
+        <Panel title="Direction accuracy" subtitle="Rolling 30 recorded sessions" action={<Legend/>}>
+          {data.rolling.length ? <ResponsiveContainer width="100%" height={240}><ComposedChart data={data.rolling} margin={{right: 20, left: -15, top: 20}}>
+            <CartesianGrid vertical={false} strokeDasharray="3 5" stroke="#e9edf3"/><XAxis dataKey="date" tickFormatter={shortDate} minTickGap={55} tick={{fontSize: 11}} axisLine={false} tickLine={false}/><YAxis domain={[0, 100]} tickFormatter={n => `${n}%`} tick={{fontSize: 11}} axisLine={false} tickLine={false}/><Tooltip formatter={(v, n) => [`${v}%`, n === 'model' ? 'Our calls' : 'Simply buying']} labelFormatter={x => shortDate(String(x))}/><Line isAnimationActive={false} dataKey="model" stroke="#3972e2" strokeWidth={2.2} dot={false}/><Line isAnimationActive={false} dataKey="baseline" stroke="#a4afbf" strokeDasharray="5 4" dot={false}/>
+          </ComposedChart></ResponsiveContainer> : <Empty title="Awaiting results"/>}
+        </Panel>
+        <Panel title="Rule scores vs results" subtitle="Predicted confidence compared with observed accuracy">
+          {data.calibration.length ? <><div className="legend chart-legend"><span><i className="blue-dot"/>Rule score</span><span><i className="teal-dot"/>Observed</span></div><ResponsiveContainer width="100%" height={220}><BarChart data={data.calibration} margin={{right: 20, left: -15}}>
+            <CartesianGrid vertical={false} strokeDasharray="3 5" stroke="#e9edf3"/><XAxis dataKey="label" tick={{fontSize: 11}} axisLine={false} tickLine={false}/><YAxis domain={[0, 100]} tickFormatter={n => `${n}%`} tick={{fontSize: 11}} axisLine={false} tickLine={false}/><Tooltip formatter={(v, n) => [`${v}%`, n === 'expected' ? 'Rule score' : 'Observed']}/><Bar isAnimationActive={false} dataKey="expected" fill="#79a0f0" radius={[4, 4, 0, 0]}/><Bar isAnimationActive={false} dataKey="actual" fill="#80c6b6" radius={[4, 4, 0, 0]}/>
+          </BarChart></ResponsiveContainer><p className="panel-footnote">{data.calibration.map(x => `${x.label}: ${x.count} calls`).join(' · ')}</p></> : <Empty title="Awaiting results"/>}
+        </Panel>
+      </div>
+      {data.groups.map(group => <div className="group-row" key={group.name}><div><strong>{group.name}</strong><small>{group.total} scored calls</small></div><div><strong>{group.accuracy ?? '—'}% right</strong><small>Simply buying: {group.baseline_accuracy ?? '—'}%</small></div><span className={tone(group.pnl)}>{money(group.pnl)}</span></div>)}
+      {data.causes.length > 0 && <p className="panel-footnote">Loss review: {data.causes.map(cause => `${cause.name} (${cause.count})`).join(' · ')}</p>}
+    </div></details>
+  </>;
 }
 
-function HistoryPage({dates,open}:{dates:string[];open:(c:Call)=>void}){
-  const [date,setDate]=useState(dates[0]||''),[wrong,setWrong]=useState(false),[direction,setDirection]=useState('all');const {data,error,loading,reload}=useApi<Dashboard>(`today?date=${date}`);const index=dates.indexOf(date);
-  return <><div className="history-controls"><div className="date-picker"><button className="icon-button" aria-label="Previous trading day" disabled={index>=dates.length-1} onClick={()=>setDate(dates[index+1])}><ChevronLeft size={18}/></button><CalendarDays size={17}/><select aria-label="Trading day" value={date} onChange={e=>setDate(e.target.value)}>{dates.map(d=><option key={d} value={d}>{fullDate(d)}</option>)}</select><button className="icon-button" aria-label="Next trading day" disabled={index<=0} onClick={()=>setDate(dates[index-1])}><ChevronRight size={18}/></button></div><div className="segmented">{['all','UP','DOWN'].map(d=><button className={direction===d?'selected':''} onClick={()=>setDirection(d)} key={d}>{d==='all'?'All calls':d==='UP'?'Buy':'Sell'}</button>)}</div><label className="switch-label"><input type="checkbox" checked={wrong} onChange={e=>setWrong(e.target.checked)}/><span className="switch"/>Only wrong calls</label></div>{error?<Failure message={error} retry={reload}/>:loading||!data?<Loading/>:<><div className="history-note"><LockKeyhole size={16}/><p>These are the original calls. Reasons, confidence, and ranges stay as they were that morning.</p></div><Panel title={`${data.calls.length} calls on the record`} subtitle="₹1,000 per stock call · same amount for simply buying"><CallsTable calls={data.calls.filter(c=>(!wrong||c.result==='Wrong')&&(direction==='all'||c.direction===direction))} open={open}/></Panel><div className="two-columns"><Panel title="Morning note" subtitle="Preview only. Nothing is sent from this page."><Brief date={date} period="morning"/></Panel><Panel title="Evening note" subtitle="Includes every loss as well as every win."><Brief date={date} period="evening"/></Panel></div></>}</>
+function HistoryPage({dates, open}: {dates: string[]; open: (call: Call) => void}) {
+  const [date, setDate] = useState(dates[0] || ''), [wrong, setWrong] = useState(false), [direction, setDirection] = useState('all');
+  const {data, error, loading, reload} = useApi<Dashboard>(`today?date=${date}`);
+  useEffect(() => {if (!dates.includes(date)) setDate(dates[0] || '');}, [dates, date]);
+  if (!dates.length) return <Empty title="No saved calls yet"/>;
+  const index = dates.indexOf(date);
+  return <>
+    <div className="history-controls"><div className="date-picker">
+      <button className="icon-button" aria-label="Previous trading day" disabled={index >= dates.length - 1} onClick={() => setDate(dates[index + 1])}><ChevronLeft size={18}/></button><CalendarDays size={17}/>
+      <select aria-label="Trading day" value={date} onChange={e => setDate(e.target.value)}>{dates.map(day => <option key={day} value={day}>{fullDate(day)}</option>)}</select>
+      <button className="icon-button" aria-label="Next trading day" disabled={index <= 0} onClick={() => setDate(dates[index - 1])}><ChevronRight size={18}/></button>
+    </div><div className="segmented">{['all', 'UP', 'DOWN'].map(value => <button className={direction === value ? 'selected' : ''} onClick={() => setDirection(value)} key={value}>{value === 'all' ? 'All calls' : value === 'UP' ? 'Buy' : 'Sell'}</button>)}</div>
+      <label className="switch-label"><input type="checkbox" checked={wrong} onChange={e => setWrong(e.target.checked)}/><span className="switch"/>Only wrong calls</label>
+    </div>
+    {error ? <Failure message={error} retry={reload}/> : loading || !data ? <Loading/> : <>
+      <Panel title={`${data.calls.length} ${data.calls.length === 1 ? 'call' : 'calls'} on the record`} subtitle="₹1,000 per stock · comparison on the same names"><CallsTable calls={data.calls.filter(call => (!wrong || call.result === 'Wrong') && (direction === 'all' || call.direction === direction))} open={open}/></Panel>
+      <div className="two-columns">{['morning', 'evening'].map(period => <details className="panel section-disclosure" key={period}><summary>{period === 'morning' ? 'Morning note' : 'Evening note'}</summary><Brief date={date} period={period}/></details>)}</div>
+    </>}
+  </>;
 }
-function Brief({date,period}:{date:string;period:string}){const {data,error,loading,reload}=useApi<{text:string;html?:string}>(`brief/${period}?date=${date}`);return error?<Failure message={error} retry={reload}/>:loading?<p className="pad muted">Loading note…</p>:<TelegramPreview html={data?.html} text={data?.text}/>}
-
-function StockPage({open,initial}:{open:(c:Call)=>void;initial:string}){
-  const [query,setQuery]=useState(''),[selected,setSelected]=useState(initial||'RELIANCE');const {data:stocks}=useApi<{symbol:string;name:string;sector:string}[]>('stocks');const {data,error,loading,reload}=useApi<Stock>(`stocks/${selected}`);
-  const matches=(stocks||[]).filter(s=>`${s.symbol} ${s.name}`.toLowerCase().includes(query.toLowerCase()));
-  return <><div className="stock-search-wrap"><Search size={20}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Find a stock by name or symbol" aria-label="Find a stock"/>{query&&<div className="search-results">{matches.length?matches.map(s=><button key={s.symbol} onClick={()=>{setSelected(s.symbol);setQuery('')}}><strong>{s.symbol}</strong><span>{s.name}</span><ArrowRight size={15}/></button>):<p>No stock matches “{query}”.</p>}</div>}</div><div className="quick-stocks"><span>Quick look</span>{['RELIANCE','TCS','HDFCBANK','NIFTY'].map(s=><button className={selected===s?'active':''} onClick={()=>setSelected(s)} key={s}>{s}</button>)}</div>{error?<Failure message={error} retry={reload}/>:loading||!data?<Loading/>:<><div className="stock-title"><Avatar symbol={selected}/><div><h2>{data.name}</h2><span>{selected} · {data.sector}</span></div><Badge tint="blue">{data.calls.length} recorded calls</Badge></div><Metrics summary={data.summary} showTotal/><Panel title="Price and our calls" subtitle="Green dots: right. Red dots: wrong. A flat day has no dot."><div className="chart"><ResponsiveContainer width="100%" height={300}><ComposedChart data={data.prices.map(p=>{const c=data.calls.find(c=>c.date===p.date);return {...p,right:c?.result==='Right'?p.close:null,wrong:c?.result==='Wrong'?p.close:null}})} margin={{top:15,right:20,left:10}}><CartesianGrid vertical={false} strokeDasharray="3 5" stroke="#e9edf3"/><XAxis dataKey="date" tickFormatter={shortDate} minTickGap={65} tick={{fontSize:11}} axisLine={false} tickLine={false}/><YAxis domain={['auto','auto']} tickFormatter={n=>`₹${Math.round(n)}`} tick={{fontSize:11}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>price(Number(v))} labelFormatter={x=>shortDate(String(x))}/><Line isAnimationActive={false} dataKey="close" name="Close" stroke="#7197df" dot={false} strokeWidth={2}/><Scatter isAnimationActive={false} dataKey="right" name="Right" fill="#24977d"/><Scatter isAnimationActive={false} dataKey="wrong" name="Wrong" fill="#d97176"/></ComposedChart></ResponsiveContainer></div></Panel><Panel title="Our calls versus simply buying" subtitle="Same stock. Same money at the start of each day." action={<Legend/>}><MoneyChart points={data.summary.equity}/></Panel><Panel title="Every call on this stock" subtitle="Includes unselected research calls, not just the daily top ten."><CallsTable calls={data.calls} open={open}/></Panel><EventNotes symbol={selected} notes={data.events||[]} patterns={data.patterns||[]} options={data.event_options||{event_types:[],effects:[]}} onSaved={reload}/></>}</>
+function Brief({date, period}: {date: string; period: string}) {
+  const {data, error, loading, reload} = useApi<{text: string; html?: string}>(`brief/${period}?date=${date}`);
+  return error ? <Failure message={error} retry={reload}/> : loading ? <p className="pad muted">Loading note…</p> : <TelegramPreview html={data?.html} text={data?.text}/>;
 }
 
-function HealthPage({toast}:{toast:(text:string)=>void}){
-  const {data,error,loading,reload}=useApi<Health>('health');const [busy,setBusy]=useState<number|null>(null);
-  async function decide(id:number,decision:string){setBusy(id);try{const res=await api<{message:string}>(`improvements/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision})});toast(res.message);reload()}catch(e){toast((e as Error).message)}finally{setBusy(null)}}
-  if(error)return <Failure message={error} retry={reload}/>;if(loading||!data)return <Loading/>;
-  return <><div className="health-grid">{data.checks.map(c=><div className="health-card" key={c.name}><div><span className={`status-dot ${c.status}`}/><h3>{c.name}</h3><Badge tint={c.status==='ok'?'green':c.status==='bad'?'red':'amber'}>{c.status==='ok'?'Checked':c.status==='bad'?'Needs attention':'Not ready'}</Badge></div><p>{c.detail}</p></div>)}</div><div className="two-columns"><Panel title="The model in use" subtitle="A challenger must earn its place.">{data.models.map(m=><div className="model-item" key={m.name}><span className="model-icon"><FlaskConical size={20}/></span><div><Badge tint="blue">Current model</Badge><h3>Five-day trend rule</h3><p>{m.description}</p><small>Recorded {shortDate(m.date.slice(0,10))}</small></div></div>)}<div className="inset-note"><LockKeyhole size={16}/><p>No automatic promotion is active. A trained challenger needs 60 matched days of unseen results before it can be considered.</p></div></Panel><Panel title="AI helpers" subtitle="No proven value means no say in a call.">{data.agents.map(a=><div className="agent-row" key={a.name}><span>{a.name}</span><small>{a.status}</small><strong>{a.weight}% say</strong></div>)}<div className="budget-row"><span>Reserved tokens today</span><strong>{data.budget.used.toLocaleString()} / {data.budget.cap.toLocaleString()}</strong></div><div className="budget-track"><i style={{width:`${Math.min(100,data.budget.used/data.budget.cap*100)}%`}}/></div></Panel></div>
-    <Panel title="Ideas to try" subtitle="You decide what gets tested. Approval never changes the current model."><div className="idea-list">{data.ideas.map(idea=><div className="idea" key={idea.id}><span className="idea-symbol"><Sparkles size={19}/></span><div><h3>{idea.title}</h3><p>{idea.detail}</p></div>{idea.status==='pending'?<div className="idea-actions"><button className="button secondary small" disabled={busy===idea.id} onClick={()=>decide(idea.id,'skipped')}>Skip</button><button className="button primary small" disabled={busy===idea.id} onClick={()=>decide(idea.id,'queued')}>Try it <ArrowRight size={14}/></button></div>:<Badge tint={idea.status==='queued'?'blue':'neutral'}>{idea.status==='queued'?'Queued for testing':'Skipped'}</Badge>}</div>)}</div></Panel>
-    <Panel title="Recent jobs" subtitle="A record of what actually ran."><div className="table-scroll"><table><thead><tr><th>Job</th><th>State</th><th>Rows</th><th>Details</th></tr></thead><tbody>{data.jobs.map((j,i)=><tr key={i}><td><strong>{j.name}</strong><span className="cell-sub">{new Date(j.at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST</span></td><td><Badge tint={j.status==='ok'?'green':'amber'}>{j.status}</Badge></td><td>{j.rows.toLocaleString()}</td><td>{j.detail}</td></tr>)}</tbody></table></div></Panel></>
+function StockPage({open, initial}: {open: (call: Call) => void; initial: string}) {
+  const [query, setQuery] = useState(''), [selected, setSelected] = useState(initial || 'RELIANCE');
+  const {data: stocks} = useApi<{symbol: string; name: string; sector: string}[]>('stocks');
+  const {data, error, loading, reload} = useApi<Stock>(`stocks/${selected}`);
+  const matches = (stocks || []).filter(stock => `${stock.symbol} ${stock.name}`.toLowerCase().includes(query.toLowerCase()));
+  return <>
+    <div className="stock-search-wrap"><Search size={20}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search stocks" aria-label="Find a stock"/>
+      {query && <div className="search-results">{matches.length ? matches.map(stock => <button key={stock.symbol} onClick={() => {setSelected(stock.symbol); setQuery('');}}><strong>{stock.symbol}</strong><span>{stock.name}</span><ArrowRight size={15}/></button>) : <p>No matching stock</p>}</div>}
+    </div>
+    <div className="quick-stocks">{['RELIANCE', 'TCS', 'HDFCBANK', 'NIFTY'].filter(symbol => stocks?.some(stock => stock.symbol === symbol)).map(symbol => <button className={selected === symbol ? 'active' : ''} onClick={() => setSelected(symbol)} key={symbol}>{symbol}</button>)}</div>
+    {error ? <Failure message={error} retry={reload}/> : loading || !data ? <Loading/> : <>
+      <div className="stock-title"><Avatar symbol={selected}/><div><h2>{data.name}</h2><span>{selected} · {data.sector}</span></div><Badge tint="blue">{data.calls.length} calls</Badge></div>
+      <Metrics summary={data.summary} showTotal/>
+      <Panel title="Price history" subtitle="Call outcomes: green = right · red = wrong">
+        {data.prices.length ? <div className="chart"><ResponsiveContainer width="100%" height={280}><ComposedChart data={data.prices.map(value => {
+          const call = data.calls.find(call => call.date === value.date);
+          return {...value, right: call?.result === 'Right' ? value.close : null, wrong: call?.result === 'Wrong' ? value.close : null};
+        })} margin={{top: 15, right: 20, left: 10}}>
+          <CartesianGrid vertical={false} strokeDasharray="3 5" stroke="#e9edf3"/><XAxis dataKey="date" tickFormatter={shortDate} minTickGap={65} tick={{fontSize: 11}} axisLine={false} tickLine={false}/><YAxis domain={['auto', 'auto']} tickFormatter={n => `₹${Math.round(n)}`} tick={{fontSize: 11}} axisLine={false} tickLine={false}/><Tooltip formatter={value => price(Number(value))} labelFormatter={label => shortDate(String(label))}/><Line isAnimationActive={false} dataKey="close" name="Close" stroke="#7197df" dot={false} strokeWidth={2}/><Scatter isAnimationActive={false} dataKey="right" name="Right" fill="#24977d"/><Scatter isAnimationActive={false} dataKey="wrong" name="Wrong" fill="#d97176"/>
+        </ComposedChart></ResponsiveContainer></div> : <Empty title="No price history"/>}
+      </Panel>
+      <EventNotes symbol={selected} notes={data.events || []} patterns={data.patterns || []} options={data.event_options || {event_types: [], effects: []}} onSaved={reload}/>
+      <details className="panel section-disclosure"><summary>All research calls · {data.calls.length}</summary><p className="panel-footnote">Includes candidates outside the daily shortlist.</p><CallsTable calls={data.calls} open={open}/></details>
+      <details className="panel section-disclosure"><summary>Stock performance vs simply buying</summary><Legend/><MoneyChart points={data.summary.equity}/></details>
+    </>}
+  </>;
 }
 
-function Modal({children,title,close,drawer=false}:{children:ReactNode;title:string;close:()=>void;drawer?:boolean}){
-  const ref=useRef<HTMLDivElement>(null);
-  useEffect(()=>{const prev=document.activeElement as HTMLElement;document.body.style.overflow='hidden';ref.current?.focus();const key=(e:KeyboardEvent)=>{if(e.key==='Escape')close();if(e.key==='Tab'){const els=ref.current?.querySelectorAll<HTMLElement>('button,a[href],input,select,textarea,[tabindex="0"]');if(!els?.length)return;const first=els[0],last=els[els.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}};document.addEventListener('keydown',key);return()=>{document.body.style.overflow='';document.removeEventListener('keydown',key);prev?.focus()}},[close]);
-  return <div className={`modal-overlay ${drawer?'drawer-overlay':''}`} onMouseDown={e=>{if(e.target===e.currentTarget)close()}}><div ref={ref} className={drawer?'drawer':'modal'} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}><div className="modal-head"><h2>{title}</h2><button className="icon-button" aria-label="Close details" onClick={close}><X size={21}/></button></div>{children}</div></div>
+function HealthPage({toast}: {toast: (text: string) => void}) {
+  const {data, error, loading, reload} = useApi<Health>('health');
+  const [busy, setBusy] = useState<number | null>(null);
+  async function decide(id: number, decision: string) {
+    setBusy(id);
+    try {const result = await api<{message: string}>(`improvements/${id}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({decision})}); toast(result.message); reload();}
+    catch (e) {toast((e as Error).message);} finally {setBusy(null);}
+  }
+  if (error) return <Failure message={error} retry={reload}/>;
+  if (loading || !data) return <Loading/>;
+  const checks = data.checks.filter(check => !['AI helpers', 'F&O'].includes(check.name));
+  return <>
+    <div className="health-grid">{checks.map(check => <div className="health-card" key={check.name}>
+      <div><span className={`status-dot ${check.status}`}/><h3>{check.name}</h3><Badge tint={check.status === 'ok' ? 'green' : check.status === 'bad' ? 'red' : 'neutral'}>{check.status === 'ok' ? 'OK' : check.status === 'bad' ? 'Action required' : 'Review'}</Badge></div><p>{check.detail}</p>
+    </div>)}</div>
+    <Panel title="Recent jobs">
+      {data.jobs.length ? <div className="table-scroll"><table><thead><tr><th>Job</th><th>Status</th><th>Rows</th><th>Details</th></tr></thead><tbody>{data.jobs.map((job, index) => <tr key={index}>
+        <td><strong>{job.name}</strong><span className="cell-sub">{new Date(job.at).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})} IST</span></td><td><Badge tint={job.status === 'ok' ? 'green' : 'neutral'}>{job.status}</Badge></td><td>{job.rows.toLocaleString()}</td><td>{job.detail}</td>
+      </tr>)}</tbody></table></div> : <Empty title="No jobs recorded"/>}
+    </Panel>
+    <details className="panel section-disclosure"><summary>Method and experiments</summary><div className="details-body">
+      <h3>Five-day trend rule</h3><p className="method-summary">Uncalibrated price-based scores. News notes are recorded separately and do not affect calls.</p>
+      {data.models.map(model => <div className="model-item" key={model.name}><FlaskConical size={18}/><div><strong>{model.name}</strong><p>{model.description}</p><small>{model.status} · {shortDate(model.date.slice(0, 10))}</small></div></div>)}
+      {data.ideas.length > 0 && <><h3>Experiment backlog</h3><p className="method-summary">Queued ideas do not change the active rule.</p><div className="idea-list">{data.ideas.map(idea => <div className="idea" key={idea.id}>
+        <span className="idea-symbol"><Sparkles size={18}/></span><div><h3>{idea.title}</h3><p>{idea.detail}</p></div>
+        {idea.status === 'pending' ? <div className="idea-actions"><button className="button secondary small" disabled={busy === idea.id} onClick={() => void decide(idea.id, 'skipped')}>Skip</button><button className="button primary small" disabled={busy === idea.id} onClick={() => void decide(idea.id, 'queued')}>Try it <ArrowRight size={14}/></button></div> : <Badge tint={idea.status === 'queued' ? 'blue' : 'neutral'}>{idea.status === 'queued' ? 'Queued' : 'Skipped'}</Badge>}
+      </div>)}</div></>}
+    </div></details>
+  </>;
 }
-function CallDrawer({call,close,lookup}:{call:Call;close:()=>void;lookup:(s:string)=>void}){return <Modal title="The full call" close={close} drawer><div className="drawer-body"><div className="stock-title"><Avatar symbol={call.symbol}/><div><h2>{call.symbol}</h2><span>{call.name}</span></div><Badge tint={call.direction==='UP'?'green':'red'}>{call.direction==='UP'?'Buy':'Sell'}</Badge></div><p className="muted small-text">{fullDate(call.date)} · {call.sample?'Generated example':'Recorded forecast'}</p><div className="drawer-confidence"><span>Estimated confidence</span><strong>{call.confidence}%</strong><p>Not yet verified. Previously right {call.past_right} of {call.past_total} times on this instrument.</p></div><h3>Why this call?</h3><p className="reason">{call.reason}</p><div className="detail-grid"><div><span>Expected closing range</span><strong>{price(call.expected_low)} – {price(call.expected_high)}</strong></div><div><span>Stop / alert level</span><strong>{price(call.stop)}</strong></div><div><span>Previous close</span><strong>{price(call.ref_price)}</strong></div><div><span>Call period</span><strong>Open → close</strong></div></div><div className="inset-note"><Info size={16}/><p>The stop is an alert level. Results use the close, because daily data cannot show a reliable stop fill.</p></div><h3>What happened?</h3><div className="result-detail"><Result call={call}/><strong className={tone(call.pnl)}>{call.kind==='index'?'Index: direction only':money(call.pnl)}</strong></div>{call.result==='Pending'?<p className="muted">Waiting for the day’s closing prices. No outcome has been recorded.</p>:<><div className="day-detail"><span>Open / close</span><strong>{price(call.entry!)} / {price(call.exit!)}</strong></div><div className="day-detail"><span>Simply buying</span><strong>{money(call.baseline_pnl)}</strong></div>{call.explanation&&<p className="miss-explanation">{call.explanation}</p>}</>}<h3>Sources available that morning</h3><div className="sources">{call.sources.map((s,i)=><div key={i}>{s.url&&/^https?:\/\//.test(s.url)?<a href={s.url} target="_blank" rel="noreferrer">{s.label}<ExternalLink size={13}/></a>:<span>{s.label}</span>}<small>{new Date(s.published_at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST</small></div>)}</div><div className="frozen-note"><LockKeyhole size={14}/>Original call saved. It cannot be edited.</div><button className="button primary full" onClick={()=>lookup(call.symbol)}>See every call on {call.symbol}<ArrowRight size={15}/></button></div></Modal>}
 
-export default function App(){
-  const [page,setPage]=useState<Page>((nav.some(n=>n.id===location.hash.slice(1))?location.hash.slice(1):'today') as Page),[menu,setMenu]=useState(false),[call,setCall]=useState<Call|null>(null),[modal,setModal]=useState<'method'|'brief'|null>(null),[stock,setStock]=useState('RELIANCE'),[toast,setToast]=useState('');
-  const {data,error,loading,reload}=useApi<Dashboard>('today',60000);
-  const close=useCallback(()=>{setCall(null);setModal(null)},[]);
-  const navigate=useCallback((p:Page)=>{setPage(p);location.hash=p;setMenu(false);window.scrollTo({top:0,behavior:'instant'})},[]);
-  useEffect(()=>{const update=()=>{const value=location.hash.slice(1);if(nav.some(n=>n.id===value))setPage(value as Page)};window.addEventListener('hashchange',update);return()=>window.removeEventListener('hashchange',update)},[]);
-  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),5000);return()=>clearTimeout(t)}},[toast]);
-  const pageInfo={today:{title:'Good morning, Ravi.',subtitle:'Your calls, their results, and nothing swept under the rug.'},record:{title:'Let the results do the talking.',subtitle:'A full picture of what worked, what didn’t, and what it cost.'},history:{title:'Every day. Every call.',subtitle:'The original record, exactly as it was made.'},stock:{title:'Get to know a stock.',subtitle:'Follow every call and see whether the model has learned anything.'},indices:{title:'Nifty, calls and puts.',subtitle:'Understand the setup, the cost and when to skip.'},health:{title:'A look under the hood.',subtitle:'What’s working, what’s waiting, and what you could try next.'}}[page];
-  return <div className="app-shell">{menu&&<div className="nav-scrim" onClick={()=>setMenu(false)}/>}<aside className={`sidebar ${menu?'open':''}`}><a className="brand" href="#today" onClick={()=>navigate('today')}><span className="brand-mark"><BarChart3 size={23} strokeWidth={2.5}/></span><span>Nifty<span className="brand-light"> Signal</span><small>A MARKET LEARNING JOURNAL</small></span></a><div className="nav-caption">YOUR WORKSPACE</div><nav>{nav.map(n=><button key={n.id} className={`nav-item ${page===n.id?'active':''}`} onClick={()=>navigate(n.id)}><n.icon size={19}/>{n.label}{page===n.id&&<span className="nav-active-dot"/>}</button>)}</nav><div className="sidebar-bottom"><div className="fno-card"><div><LockKeyhole size={17}/><strong>Explore index options</strong><Badge>Phase 2</Badge></div><p>Check the risk before an option trade.</p><button onClick={()=>navigate('indices')}>Open Index lab <ArrowRight size={14}/></button></div><button className="help-button" onClick={()=>setModal('method')}><CircleHelp size={18}/> How scoring works</button><div className="profile"><span>RJ</span><div><strong>Ravi’s workspace</strong><small>Private · Just for you</small></div><LockKeyhole size={14}/></div></div></aside><div className="workspace"><header className="topbar"><div><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={()=>setMenu(x=>!x)}><Menu size={22}/></button><span className="topbar-parent">My journal</span><ChevronRight size={13}/><strong>{nav.find(n=>n.id===page)?.label}</strong></div><div><span className="local-status"><i/>{remoteApi?'Private workspace':'Local workspace'}</span><span className="topbar-divider"/><Badge tint={data?.mode==='live'?'green':'blue'}><FlaskConical size={13}/>{data?.mode==='live'?'Paper mode':'Sample data'}</Badge></div></header><main><div className="page-heading"><div><div className="eyebrow page-eyebrow">{data?.date?fullDate(data.date):'YOUR PRIVATE JOURNAL'} <span>· IST</span></div><h1>{pageInfo.title}</h1><p>{pageInfo.subtitle}</p></div><div className="heading-actions">{page==='today'?<button className="button secondary" disabled={!data?.date} onClick={()=>setModal('brief')}><Send size={16}/>Morning note</button>:<button className="button secondary" onClick={()=>void downloadCalls().catch(e=>setToast(e.message))}><Download size={16}/>Export calls</button>}<button className="icon-button refresh-button" onClick={reload} aria-label="Refresh journal"><History size={17}/></button></div></div>{data?.mode==='demo'&&<div className="sample-note"><FlaskConical size={15}/><span>You’re exploring generated examples. These are not real prices, live calls, or proven returns.</span><button onClick={()=>setModal('method')}>How this works <ArrowRight size={13}/></button></div>}{data?.mode==='live'&&page==='today'&&<><DailyCallNotice data={data} navigate={navigate}/><FetchLatest/><LivePrices symbols={data.calls.map(c=>c.symbol)}/><LatestNews/></>} {error?<Failure message={error} retry={reload}/>:loading||!data?<Loading/>:!data.date&&page==='today'?<Empty title="Your journal is ready for its first calls">Import price history, then run the morning pipeline. The README walks through setup.</Empty>:page==='today'?<Today data={data} open={setCall} navigate={navigate}/>:page==='record'?<RecordPage/>:page==='history'?<HistoryPage dates={data.dates} open={setCall}/>:page==='indices'?<IndexLab/>:page==='stock'?<StockPage open={setCall} initial={stock}/>:<HealthPage toast={setToast}/>}<footer><span><LockKeyhole size={12}/>Private research. No real orders.</span><span>Wins and losses. Always together.</span></footer></main></div>{call&&<CallDrawer call={call} close={close} lookup={symbol=>{setStock(symbol);close();navigate('stock')}}/>}{modal&&<Modal title={modal==='method'?'How this journal keeps score':'Your morning note'} close={close}>{modal==='brief'&&data?.date?<><div className="inset-note"><Send size={16}/><p>This is a preview. Opening it does not send a Telegram message.</p></div><Brief date={data.date} period="morning"/></>:<div className="method-content"><p>One day. Ten calls. An honest comparison.</p><div><span>01</span><section><h3>Save the morning view</h3><p>Five buy calls and five sell calls, using only information available before 07:00 IST. Every call stays on the record.</p></section></div><div><span>02</span><section><h3>See what happened</h3><p>Compare the opening price with the close. Put a theoretical ₹1,000 on each stock call and deduct ₹1.50 in assumed costs. Indices get a direction score, but no money result.</p></section></div><div><span>03</span><section><h3>Check the simple alternative</h3><p>What if you had simply bought those exact stocks with the same money? We show that next to the model on every scorecard.</p></section></div><div><span>04</span><section><h3>Earn trust over time</h3><p>The model must do better on days it has never seen. Generated examples do not count toward the 60-day check. Confidence, costs, and losses all matter.</p></section></div><div className="inset-note"><Info size={16}/><p>Money results use fractional, fixed ₹1,000 positions for comparison. They do not simulate whole shares, borrowing, or stop fills. The 0.15% cost is an assumption, not a broker quote.</p></div></div>}</Modal>}{toast&&<div className="toast" role="status"><CheckCheck size={18}/>{toast}<button aria-label="Dismiss notification" onClick={()=>setToast('')}><X size={16}/></button></div>}</div>
+function Modal({children, title, close, drawer = false}: {children: ReactNode; title: string; close: () => void; drawer?: boolean}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement, overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden'; ref.current?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+      if (event.key === 'Tab') {
+        const elements = Array.from(ref.current?.querySelectorAll<HTMLElement>('button,a[href],input,select,textarea,summary,[tabindex="0"]') || []).filter(element => element.getClientRects().length && !element.hasAttribute('disabled'));
+        const first = elements[0], last = elements[elements.length - 1];
+        if (!first) event.preventDefault();
+        else if (event.shiftKey && (document.activeElement === first || document.activeElement === ref.current)) {event.preventDefault(); last?.focus();}
+        else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first?.focus();}
+      }
+    };
+    document.addEventListener('keydown', key);
+    return () => {document.body.style.overflow = overflow; document.removeEventListener('keydown', key); previous?.focus();};
+  }, [close]);
+  return <div className={`modal-overlay ${drawer ? 'drawer-overlay' : ''}`} onMouseDown={event => {if (event.target === event.currentTarget) close();}}>
+    <div ref={ref} className={drawer ? 'drawer' : 'modal'} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
+      <div className="modal-head"><h2>{title}</h2><button className="icon-button" aria-label="Close details" onClick={close}><X size={21}/></button></div>{children}
+    </div>
+  </div>;
+}
+function CallDrawer({call, close, lookup}: {call: Call; close: () => void; lookup: (symbol: string) => void}) {
+  return <Modal title="Call details" close={close} drawer><div className="drawer-body">
+    <div className="stock-title"><Avatar symbol={call.symbol}/><div><h2>{call.symbol}</h2><span>{call.name}</span></div><Badge tint={call.direction === 'UP' ? 'green' : 'red'}>{call.direction === 'UP' ? 'Buy' : 'Sell'}</Badge></div>
+    <p className="muted small-text">{fullDate(call.date)} · {call.sample ? 'Generated example' : 'Recorded forecast'}</p>
+    <div className="drawer-confidence"><span>Rule score</span><strong>{call.confidence}%</strong><p>{call.past_total ? `Earlier calls: ${call.past_right} / ${call.past_total} right` : 'No earlier resolved calls'}</p></div>
+    <h3>Reason</h3><p className="reason">{call.reason}</p>
+    <div className="detail-grid"><div><span>Closing range</span><strong>{level(call, call.expected_low)} – {level(call, call.expected_high)}</strong></div><div><span>Alert level</span><strong>{level(call, call.stop)}</strong></div><div><span>Previous close</span><strong>{level(call, call.ref_price)}</strong></div><div><span>Horizon</span><strong>Open → close</strong></div></div>
+    <h3>Result</h3><div className="result-detail"><Result call={call}/><strong className={tone(call.pnl)}>{call.kind === 'index' ? 'Direction only' : money(call.pnl)}</strong></div>
+    {call.result === 'Pending' ? <p className="muted">Awaiting closing prices.</p> : <><div className="day-detail"><span>Open / close</span><strong>{level(call, call.entry!)} / {level(call, call.exit!)}</strong></div><div className="day-detail"><span>Simply buying</span><strong>{money(call.baseline_pnl)}</strong></div>{call.explanation && <p className="miss-explanation">{call.explanation}</p>}</>}
+    <details className="call-provenance"><summary>Sources and record details</summary>
+      <p className="method-summary">{call.model} · scores are uncalibrated. Alerts are levels, not simulated fills.</p>
+      <div className="sources">{call.sources.map((source, index) => <div key={index}>
+        {source.url && /^https?:\/\//.test(source.url) ? <a href={source.url} target="_blank" rel="noreferrer">{source.label}<ExternalLink size={13}/></a> : <span>{source.label}</span>}
+        <small>{new Date(source.published_at).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})} IST</small>
+      </div>)}</div><div className="frozen-note"><LockKeyhole size={14}/>Original call saved. It cannot be edited.</div>
+    </details>
+    <button className="button primary full" onClick={() => lookup(call.symbol)}>See every call on {call.symbol}<ArrowRight size={15}/></button>
+  </div></Modal>;
+}
+function MethodDetails() {
+  return <div className="method-content">
+    <div><span>01</span><section><h3>Selection</h3><p>Up to ten available candidates, ranked across Buy and Sell with no direction quota. The five-day trend rule is uncalibrated; a rule score is not an established success rate. Older calls retain their original selection.</p></section></div>
+    <div><span>02</span><section><h3>Scoring</h3><p>Open-to-close returns on ₹1,000 per stock, less 0.15% assumed trading costs. Long and short returns use the entry price as denominator. Indices are scored for direction only. The comparison uses fractional positions, not executable fills; alerts do not simulate stops.</p></section></div>
+    <div><span>03</span><section><h3>Comparison</h3><p>Simply buying uses the exact same stocks, allocation and costs. All resolved calls, including losses, remain in the record. Missing closes stay pending.</p></section></div>
+    <div><span>04</span><section><h3>Data</h3><p>Morning inputs must be published and received by 07:00 IST. Saved calls and results cannot be rewritten. News is context only. Generated data is labelled; paper results do not represent real orders.</p></section></div>
+  </div>;
+}
+
+export default function App() {
+  const [page, setPage] = useState<Page>((nav.some(item => item.id === location.hash.slice(1)) ? location.hash.slice(1) : 'today') as Page);
+  const [menu, setMenu] = useState(false), [call, setCall] = useState<Call | null>(null);
+  const [modal, setModal] = useState<'method' | 'brief' | null>(null), [stock, setStock] = useState('RELIANCE'), [toast, setToast] = useState('');
+  const {data, error, loading, reload} = useApi<Dashboard>('today', 60000);
+  const close = useCallback(() => {setCall(null); setModal(null);}, []);
+  const navigate = useCallback((next: Page) => {setPage(next); location.hash = next; setMenu(false); window.scrollTo({top: 0, behavior: 'instant'});}, []);
+  useEffect(() => {
+    const update = () => {const value = location.hash.slice(1); if (nav.some(item => item.id === value)) setPage(value as Page);};
+    window.addEventListener('hashchange', update); return () => window.removeEventListener('hashchange', update);
+  }, []);
+  useEffect(() => {if (toast) {const timer = setTimeout(() => setToast(''), 5000); return () => clearTimeout(timer);}}, [toast]);
+  const pageInfo = {
+    today: {title: 'Daily overview', subtitle: 'Calls, market data and latest results.'},
+    record: {title: 'Track record', subtitle: 'Results after costs, compared with simply buying.'},
+    history: {title: 'Calls by day', subtitle: 'Saved calls and outcomes.'},
+    stock: {title: 'Stock research', subtitle: 'Price history, company news and recorded calls.'},
+    indices: {title: 'Index lab', subtitle: 'Nifty 50 and Bank Nifty.'},
+    health: {title: 'System health', subtitle: 'Data sources, notifications and scheduled jobs.'},
+  }[page];
+  return <div className="app-shell">
+    {menu && <div className="nav-scrim" onClick={() => setMenu(false)}/>}
+    <aside className={`sidebar ${menu ? 'open' : ''}`}>
+      <a className="brand" href="#today" onClick={() => navigate('today')}><span className="brand-mark"><BarChart3 size={23} strokeWidth={2.5}/></span><span>Nifty<span className="brand-light"> Signal</span><small>MARKET JOURNAL</small></span></a>
+      <div className="nav-caption">WORKSPACE</div>
+      <nav>{nav.map(item => <button key={item.id} className={`nav-item ${page === item.id ? 'active' : ''}`} aria-current={page === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}><item.icon size={19}/>{item.label}{page === item.id && <span className="nav-active-dot"/>}</button>)}</nav>
+      <div className="sidebar-bottom"><button className="help-button" onClick={() => setModal('method')}><CircleHelp size={18}/> Method & data</button><div className="profile"><span>RJ</span><div><strong>Ravi’s workspace</strong><small>Private journal</small></div><LockKeyhole size={14}/></div></div>
+    </aside>
+    <div className="workspace"><header className="topbar"><div><button className="icon-button mobile-menu" aria-label="Open navigation" aria-expanded={menu} onClick={() => setMenu(value => !value)}><Menu size={22}/></button><span className="topbar-parent">Journal</span><ChevronRight size={13}/><strong>{nav.find(item => item.id === page)?.label}</strong></div>
+      {data && <span className={`badge dataset-label ${data.mode === 'live' ? 'neutral' : 'blue'}`}><FlaskConical size={13}/>{data.mode === 'live' ? 'Paper journal' : 'Generated sample data'}</span>}
+    </header><main>
+      <div className="page-heading"><div><div className="eyebrow page-eyebrow">{data?.date ? fullDate(data.date) : 'MARKET JOURNAL'} <span>· IST</span></div><h1>{pageInfo.title}</h1><p>{pageInfo.subtitle}</p></div>
+        <div className="heading-actions">{page === 'today' ? <button className="button secondary" disabled={!data?.date} onClick={() => setModal('brief')}><Send size={16}/>Morning note</button> : <button className="button secondary" onClick={() => void downloadCalls().catch(e => setToast(e.message))}><Download size={16}/>Export calls</button>}<button className="icon-button refresh-button" onClick={reload} aria-label="Refresh journal"><History size={17}/></button></div>
+      </div>
+      {error ? <Failure message={error} retry={reload}/> : loading || !data ? <Loading/> : page === 'today' ? <Today data={data} open={setCall} navigate={navigate}/> : page === 'record' ? <RecordPage/> : page === 'history' ? <HistoryPage dates={data.dates} open={setCall}/> : page === 'indices' ? <IndexLab/> : page === 'stock' ? <StockPage open={setCall} initial={stock}/> : <HealthPage toast={setToast}/>}
+      <footer><span>Nifty Signal</span><span>All times IST</span></footer>
+    </main></div>
+    {call && <CallDrawer call={call} close={close} lookup={symbol => {setStock(symbol); close(); navigate('stock');}}/>}
+    {modal && <Modal title={modal === 'method' ? 'Method & data' : 'Morning note · preview'} close={close}>
+      {modal === 'brief' && data?.date ? <><p className="preview-caption">Preview only · not sent from this screen</p><Brief date={data.date} period="morning"/></> : <MethodDetails/>}
+    </Modal>}
+    {toast && <div className="toast" role="status"><CheckCheck size={18}/>{toast}<button aria-label="Dismiss notification" onClick={() => setToast('')}><X size={16}/></button></div>}
+  </div>;
 }

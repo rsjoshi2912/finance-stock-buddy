@@ -21,14 +21,16 @@ export default function LatestNews() {
     window.addEventListener('journal:data-refreshed', load);
     return () => {active = false; clearInterval(timer); window.removeEventListener('journal:data-refreshed', load);};
   }, []);
+  const needsAttention = data?.sources.filter(source => source.status !== 'ok') || [];
   return <section className="panel news-panel">
     <div className="panel-head"><div><h2><Newspaper size={16}/> Latest news</h2>
-      <p>Public feeds checked every 5 minutes. Keyword rules label a possible effect for named companies; nothing here changes a call.</p></div></div>
+      <p>Company and market headlines</p></div></div>
     {error && <p className="quote-note negative" role="status">{error}</p>}
-    <div className="news-sources">{data?.sources.map(s => <span key={s.source} className="badge">{s.source} · {s.status === 'ok' ? 'Recent news' : s.status === 'stale' ? 'Needs an update' : 'Unavailable'}</span>)}</div>
+    {needsAttention.length > 0 && <div className="news-sources">{needsAttention.map(s => <span key={s.source} className="badge">{s.source} · {s.status === 'stale' ? 'Needs an update' : 'Unavailable'}</span>)}</div>}
     {data?.articles.length ? <div className="news-list">{data.articles.slice(0, 8).map(a => <article key={a.id}>
       <a href={a.url} target="_blank" rel="noopener noreferrer">{a.title}</a>
       <small>{a.source} · {new Date(a.published_at).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})} IST{a.stale ? ' · Older article' : ''}{a.symbols.length ? ` · ${a.symbols.join(', ')}` : ''}{a.impact && a.impact !== 'Not assessed' ? ` · ${a.impact}` : ''}</small>
-    </article>)}</div> : <p className="quote-note">No public news has been collected yet.</p>}
+    </article>)}</div> : <p className="quote-note">No recent headlines.</p>}
+    <details className="source-details"><summary>Feed details</summary><p>Public feeds checked every 5 minutes. Effect labels use keyword rules; news does not change saved calls.</p><p>{data?.sources.map(s => `${s.source}: ${s.status}`).join(' · ') || 'No feeds selected'}</p></details>
   </section>;
 }

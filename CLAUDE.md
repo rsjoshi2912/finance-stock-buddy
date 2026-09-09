@@ -10,5 +10,7 @@ Read AGENTS.md and MEMORY.md to resume, then CONTEXT.md and README.md. The owner
 - No real-order API exists. Telegram delivery is separately disabled by default. No setup command should send messages or provision cloud infrastructure.
 - Approved improvement ideas are queued, not applied. Existing forecasts do not change.
 - Keep interface text simple. Prefer explaining a result over exposing statistical jargon.
+- Owner approval 2026-09-09: use up to ten ranked available daily candidates overall, with no five-per-direction minimum. Fewer calls and one-sided days are valid; never rerank or backfill existing days.
+- Keep the interface data-focused: one paper/sample label, actionable status, optional method/source details. Remove repetitive investment warnings and inactive placeholders, not data-quality checks.
 - Backend checks: `cd backend && ../.venv/bin/python -m pytest -q`.
 - Frontend checks: `cd frontend && npm run build && npm run test:e2e` (requires API on port 8000 and Chrome).

@@ -39,25 +39,25 @@ def validate(message):
 def header(data, period):
     day = date.fromisoformat(data['date']).strftime('%d %b %Y') if data.get('date') else 'No saved date'
     return [f'<b>NIFTY SIGNAL · {period}</b>', day + ' · IST',
-            '<b>SAMPLE DATA · generated examples</b>' if data['mode'] == 'demo' else 'Paper journal · no real orders', '']
+            '<b>SAMPLE DATA · generated examples</b>' if data['mode'] == 'demo' else 'Paper journal', '']
 
 
 def no_calls(data, period='STATUS'):
     lines = header(data, period)
-    reason = (data.get('daily_status') or {}).get('reason') or 'No complete set of morning calls was saved.'
+    reason = (data.get('daily_status') or {}).get('reason') or 'No morning calls were saved.'
     lines += ['<b>NO CALLS TODAY</b>', clean(reason, 400), '',
-              'Nothing to act on from the daily stock journal.',
-              'Past calls are in Calls by day. Index lab has separate paper checks.']
+              'Previous calls and results are in the journal.']
     return validate('\n'.join(lines))
 
 
 def morning(data):
     lines = header(data, 'MORNING')
-    lines += ['Open → close · information received by 07:00 IST',
-              'Five-day price rule. Scores are unverified; news does not change these calls.', '']
+    lines += [f'{len(data["calls"])} calls · open → close · cutoff 07:00 IST',
+              'Five-day trend · uncalibrated rule scores', '']
     if not data['calls']: return no_calls(data, 'MORNING')
     for direction, label in [('UP', '↑ BUY WATCHLIST'), ('DOWN', '↓ SELL WATCHLIST')]:
         selected = [x for x in data['calls'] if x['direction'] == direction]
+        if not selected: continue
         lines.append(f'<b>{label} · {len(selected)}</b>')
         for p in selected:
             unit = '' if p.get('kind') == 'index' else '₹'
@@ -69,9 +69,8 @@ def morning(data):
     lines += ['<b>PREVIOUS RESULT</b>',
               f'Our calls {money(previous["pnl"])} · simply buying {money(previous["baseline_pnl"])}' if previous.get('days', 0)
               else 'No completed previous session yet.', '',
-              '<b>KEEP IN MIND</b>', 'Opening gaps, reversals and later news can change the picture.',
-              '₹1,000 per stock call · 0.15% assumed costs. Alerts are not guaranteed stop fills.',
-              'Indices: direction only, no call/put entry. Prices and source links are in the journal.']
+              '₹1,000 per stock · 0.15% assumed costs · indices scored for direction only.',
+              'Details and sources in the journal.']
     return validate('\n'.join(lines))
 
 
@@ -103,13 +102,12 @@ def evening(data):
     lines += ['<b>SINCE START</b>', f'Our calls {money(summary["pnl"])} · simply buying {money(summary["baseline_pnl"])}',
               f'Best day {money(summary["best_day"])} · worst {money(summary["worst_day"])}',
               f'Largest fall from a peak ₹{summary["max_drawdown"]:,.2f}', '',
-              'Paper results after assumed costs; personal income tax excluded.',
-              'A right direction can still lose after costs. No rule changes were applied.']
+              'Results after assumed trading costs.']
     return validate('\n'.join(lines))
 
 
 def indices(data):
-    lines=['<b>NIFTY SIGNAL · INDEX CHECK</b>', 'Paper research · unvalidated · no orders', '']
+    lines=['<b>NIFTY SIGNAL · INDEX CHECK</b>', 'Paper research · unvalidated', '']
     for row in data['indices']:
         direction={'UP':'UP BIAS','DOWN':'DOWN BIAS','SKIP':'SKIP'}[row['direction']]
         option=row['option']
@@ -124,7 +122,6 @@ def indices(data):
             lines += [f'Paper entry ₹{option["entry"]:,.2f} · stop ₹{option["stop"]:,.2f} · target ₹{option["target"]:,.2f}',
                       f'1 lot · planned loss ₹{option["planned_loss"]:,.2f} · full premium + buffer ₹{option["premium_at_risk"]:,.2f}']
         lines.append('')
-    lines += ['Source: Yahoo five-minute candles; may be delayed. News is not used by this rule.',
-              'An index direction is not a guaranteed option profit. Stops can fill worse than planned.',
-              'Snapshot only. Open Index lab for current expiry and source status.']
+    lines += ['Source: Yahoo five-minute candles · may be delayed.',
+              'Snapshot only. Current checks and method in Index lab.']
     return validate('\n'.join(lines))

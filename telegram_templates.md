@@ -4,37 +4,39 @@ The executable templates are in `backend/app/briefs.py`. Delivery uses Telegram 
 
 The preview endpoint provides both `text` (plain text) and `html`, plus `sent: false`. Opening a preview does not send anything. Scheduled delivery uses the same formatted message and retains private-chat verification and duplicate-attempt protection. A timeout is not permission to send again.
 
-A morning note reads like this; the values here are illustrative:
+A morning note reads like this; the values are illustrative, not saved forecasts. The count is dynamic, up to ten, and empty direction sections are omitted:
 
 ```text
 NIFTY SIGNAL · MORNING
-08 Sep 2026 · IST
-Paper journal · no real orders
+DD Mon YYYY · IST
+SAMPLE DATA · generated examples
 
-Open → close · information received by 07:00 IST
-Five-day price rule. Scores are unverified; news does not change these calls.
+2 calls · open → close · cutoff 07:00 IST
+Five-day trend · uncalibrated rule scores
 
-↑ BUY WATCHLIST · 5
+↑ BUY WATCHLIST · 2
 RELIANCE · rule score 58%
 Close range ₹1,350–1,390 · alert ₹1,330
 Short price-based reason. Past: 0/0 right.
-[Remaining saved names follow, including all five sell ideas.]
+TCS · rule score 56%
+Close range ₹3,280–3,360 · alert ₹3,250
+Short price-based reason. Past: 0/0 right.
 
 PREVIOUS RESULT
 Our calls −₹18.00 · simply buying +₹12.00
 
-KEEP IN MIND
-Opening gaps, reversals and later news can change the picture.
-₹1,000 per stock call · 0.15% assumed costs. Alerts are not guaranteed stop fills.
-Indices: direction only, no call/put entry. Prices and source links are in the journal.
+₹1,000 per stock · 0.15% assumed costs · indices scored for direction only.
+Details and sources in the journal.
 ```
 
 An evening note leads with net paper result, simply-buying result and their difference. It then lists every right, wrong and flat call, includes concise explanations for misses, names pending results and labels incomplete totals. It ends with cumulative results, best/worst day and largest fall from a peak. A correct direction can still lose after costs. Sample notes prominently say SAMPLE DATA.
 
-Index lab has a separate owner-only preview at `GET /api/indices/brief`: **INDEX CHECK**, paper status, Nifty / Bank Nifty direction, short reason, check time in IST and Call / Put / Skip. Validated contract details and illustrative premium levels appear when available. Text is escaped and kept under the existing parsed-message limit. No automatic index alerts are sent. The learning calculator remains separate and uses user-entered assumptions.
+Index lab has a separate owner-only preview at `GET /api/indices/brief`: **INDEX CHECK**, paper status, Nifty / Bank Nifty direction, short reason, check time in IST and Call / Put / Skip. Validated contract details and research premium levels appear when available. Text is escaped and kept under the existing parsed-message limit. No automatic index alerts are sent. The optional one-lot calculator remains separate and uses user-entered assumptions. Live daily notes use one Paper journal label; sample notes retain SAMPLE DATA.
 
 Formatting reference: [Telegram Bot API](https://core.telegram.org/bots/api#formatting-options).
 
-## Skipped daily batch (2026-09-09)
+## Empty batches and historical skipped days
 
-A missing or incomplete daily batch now produces a short **NO CALLS TODAY** status note at the usual morning/evening schedule, with the recorded reason. Insufficient candidates are counted explicitly; calls are not relabelled or backfilled. It uses the same verified private chat and once-only `telegram:{period}:{day}` claim as a normal note. An ambiguous attempt is not automatically retried. A no-calls evening note does not claim that results are pending. Preview remains read-only.
+Any nonempty list receives a regular morning/evening note, even with fewer than ten calls or only one direction. An empty daily list produces a short **NO CALLS TODAY** note at the usual schedule, with the recorded reason. Pending outcomes within a nonempty list are reported as pending, not as missing calls.
+
+Both paths use the same verified private chat and once-only `telegram:{period}:{day}` claim. An ambiguous attempt is not automatically retried. A no-calls evening note does not claim that closing results are pending. Preview remains read-only. The historical September 9 3-Buy/17-Sell skip and confirmed status delivery remain unchanged; the later policy does not backfill forecasts or replay that message.

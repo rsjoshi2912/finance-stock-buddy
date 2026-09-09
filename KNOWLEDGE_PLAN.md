@@ -1,6 +1,6 @@
 # News and market knowledge plan
 
-Status: design requirements, not a claim of implemented news prediction. Updated 2026-09-07 after the owner's request to learn how past news relates to positive and negative stock reactions.
+Status: event record-keeping is implemented; evaluated news prediction remains planned. Updated 2026-09-09 for the approved available-candidate policy and concise interface. The original research goal is to learn how earlier news relates to positive and negative stock reactions.
 
 ## What exists today
 
@@ -61,7 +61,7 @@ Find earlier comparisons using event type, surprise size, company/sector, liquid
 
 Show the number of independent earlier events, date span, median return, downside, range of outcomes, and the share positive after costs for a defined simulated trade. Deduplicate syndicated reports into one underlying event; 30 copied headlines are not 30 confirmations. Few cases should produce an explicit "Not enough history" label and conservative model influence. A historical percentage is not automatically a calibrated probability for today's stock.
 
-Learn from neutral events, failures and unselected eligible stocks too. Avoid constructing the dataset only from memorable news or the ten selected calls.
+Learn from neutral events, failures and unselected eligible stocks too. Avoid constructing the dataset only from memorable news or the daily shortlist of up to ten calls.
 
 ## Prevent hindsight
 
@@ -81,11 +81,11 @@ Check probability reliability, performance after costs, drawdown, coverage, and 
 
 The existing 60-day comparison is a minimum project checkpoint, not proof of a profitable strategy or adequate samples in every event category. News features only gain influence after an evaluated challenger passes the applicable gate. If they do not improve results, keep their influence at zero. No fixed news/price weighting, 80% accuracy claim or daily profit guarantee is justified in advance.
 
-The existing requirement to record five Buy and five Sell research calls remains. Low-confidence calls must stay visible as such; a missing feed or weak evidence must never create a fabricated high-confidence reason.
+The owner-approved selection policy is up to ten ranked available candidates overall, without a per-direction minimum. Fewer calls and one-sided days are valid; existing dates keep their original selection. Low rule scores remain visible; missing feeds or weak evidence must never create fabricated high-confidence reasons. News still has zero influence until a separately evaluated challenger earns it.
 
 ## What the owner sees
 
-Add plain-language details inside the existing stock/call view:
+The stock view puts each recent headline, effect, source/date and actual reaction first. It initially shows five event notes with a show-all action. Assessment evidence, comparable history, unknowns and the owner-note form are expandable; the history summary is also optional. These details remain available without repeated warning paragraphs. The following research fields are retained or planned as their underlying data becomes available:
 
 - **What happened** — short factual summary and original sources.
 - **Possible effect** — Positive / Negative / Neutral / Mixed / Unclear, for this company and horizon.
@@ -107,3 +107,5 @@ The evening view keeps the original assessment beside the actual result. It can 
 The observed Oracle VM has approximately 1 GB RAM. Until measured otherwise, keep web serving and collection lightweight and run model training/text batches on a separate suitable machine. Do not assume the original brief's larger ARM VM resources are available.
 
 Review update (2026-09-08): all historical reaction views now enforce recording time as well as price availability. Five-session windows require consecutive verified sessions; missing prior-day bars block gap measurements. New notes leave negated, uncertain and multiple-company wording Unclear. Existing immutable notes/outcomes are preserved. Patterns below five cases show no success percentage.
+
+Interface update (2026-09-09): these data-quality rules are unchanged. Simplifying the visible notes does not change assessment creation, source-time checks, outcome computation or owner-note versioning.

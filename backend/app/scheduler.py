@@ -109,7 +109,7 @@ def deliver(session, day, period):
     data = dashboard(session, day)
     if data['mode'] != 'live': raise MarketError('Only live journal messages can be sent.')
     data['daily_status'] = call_status(session, day)
-    message = (morning if period == 'morning' else evening)(data) if len(data['calls']) == 10 else no_calls(data, period.upper())
+    message = (morning if period == 'morning' else evening)(data) if data['calls'] else no_calls(data, period.upper())
     send_telegram(message, period, day, session)
     return f'{period} note sent to the configured owner'
 

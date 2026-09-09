@@ -24,16 +24,16 @@ def call_status(session, day, current=None):
         Prediction.rank.is_not(None), ~Prediction.model_version.startswith('baseline_'), Prediction.synthetic.is_(False))) or 0
     saved = session.get(Setting, f'daily_calls:{day}')
     job = session.get(ScheduledRun, f'predict:{day}')
-    if count == 10:
-        result = dict(status='ready', reason='Ten morning calls are saved.')
+    if count:
+        result = dict(status='ready', reason=f'{count} morning call{"s" if count != 1 else ""} saved.')
     elif saved:
         result = json.loads(saved.value)
     elif job and job.status == 'failed':
-        result = dict(status='skipped', reason='The morning checks failed. No complete set of calls was saved. See System health.')
+        result = dict(status='skipped', reason='The morning checks failed. No calls were saved. See System health.')
     elif day == current.astimezone(IST).date().isoformat() and current.astimezone(IST).strftime('%H:%M') < '08:25':
-        result = dict(status='waiting', reason='Waiting for the morning checks. Calls run from 07:20 to 08:25 IST on trading days.')
+        result = dict(status='waiting', reason='Morning checks run 07:20–08:25 IST on trading days.')
     else:
-        result = dict(status='skipped', reason='No morning calls were saved for this date. Past calls are in Calls by day.')
+        result = dict(status='skipped', reason='No morning calls were saved for this date.')
     delivery = session.get(Setting, f'telegram:morning:{day}')
     return dict(result, day=day, saved_calls=count,
                 telegram='sent' if delivery and delivery.value == 'sent' else 'unconfirmed' if delivery else 'not_attempted')

@@ -23,19 +23,20 @@ export default function LivePrices({symbols = []}: {symbols?: string[]}) {
     return () => {active = false; clearInterval(timer); window.removeEventListener('journal:data-refreshed', load);};
   }, []);
   const visible = data?.quotes.filter(q => !symbols.length || symbols.includes(q.symbol)).slice(0, 10) || [];
+  const delayed = data?.quotes.some(q => q.possibly_delayed);
   return <section className="panel live-prices">
-    <div className="panel-head"><div><h2><Activity size={16}/> Latest market prices</h2>
-      <p>{data?.provider || 'Market data'} · Source checks every {data?.refresh_seconds === 300 ? '5 minutes' : '15 seconds'}. Daily calls stay saved.</p></div>
+    <div className="panel-head"><div><h2><Activity size={16}/> Market prices</h2>
+      <p>{data?.provider || 'Market data'}{delayed ? ' · May be delayed' : ''} · {data?.refresh_seconds === 300 ? '5-minute' : '15-second'} checks</p></div>
       <span className="badge">{!data?.schedule_known ? 'Hours unconfirmed' : data.market_open ? 'Market open' : 'Market closed'}</span>
     </div>
     {error && <p className="quote-note negative" role="status">{error}</p>}
-    {data?.notice && <p className="quote-note">{data.notice}</p>}
     {visible.length ? <div className="quote-grid">{visible.map(q => <div className="quote-item" key={q.symbol}>
       <strong>{q.symbol}</strong><b>₹{q.price.toLocaleString('en-IN', {maximumFractionDigits: 2})}</b>
-      <small>{q.provider || data?.provider}{q.possibly_delayed ? ' · May be delayed' : ''}</small>
-      <span className={q.change < 0 ? 'negative' : 'positive'}>{q.change > 0 ? '+' : ''}₹{q.change.toFixed(2)} vs previous close</span>
+      {q.provider && q.provider !== data?.provider && <small>{q.provider}</small>}
+      <span className={q.change < 0 ? 'negative' : 'positive'}>{q.change > 0 ? '+' : ''}₹{q.change.toFixed(2)}</span>
       <small><Clock3 size={11}/>{new Date(q.market_at).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit'})} IST</small>
-      {q.stale && <small className="muted">Last known price · waiting for an update</small>}
-    </div>)}</div> : <p className="quote-note">Waiting for the market-data connection. No sample prices are substituted here.</p>}
+      {q.stale && <small className="quote-stale">Awaiting update</small>}
+    </div>)}</div> : <p className="quote-note">No price snapshots available.</p>}
+    {data?.notice && <details className="source-details"><summary>Source details</summary><p>{data.notice} Changes are measured from the previous close.</p></details>}
   </section>;
 }

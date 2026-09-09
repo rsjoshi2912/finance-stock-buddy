@@ -38,20 +38,20 @@ export default function FetchLatest() {
     finally { setRequesting(false); }
   }
   const busy = requesting || Boolean(state?.busy);
-  return <section className="panel fetch-latest" aria-label="Fetch latest data">
-    <div className="panel-head"><div><h2>Update prices and news</h2>
-      <p>Fetch the newest data available from your sources.</p></div>
+  return <section className="fetch-latest" aria-label="Fetch latest data">
+    <div className="fetch-toolbar"><div><h2>Market overview</h2>
+      <div className="fetch-summary" role="status" aria-live="polite">
+        {(error || statusError) ? <p className="negative">{error || statusError}</p> : state && <p>{state.status === 'idle' ? 'Prices and news' : state.message}{state.completed_at && <> · {new Date(state.completed_at).toLocaleTimeString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit'})} IST</>}</p>}
+      </div></div>
       <button className="button primary" onClick={() => void fetchLatest()} disabled={!state || busy || Boolean(state.retry_after_seconds)}>
         <RefreshCw size={16} className={busy ? 'fetch-spinner' : ''}/>{busy ? 'Fetching…' : 'Fetch latest'}
       </button>
     </div>
-    <div className="fetch-result" role="status" aria-live="polite">
-      {(error || statusError) && <p className="negative">{error || statusError}</p>}
-      {state && <><p>{state.message}{state.completed_at && <> · {new Date(state.completed_at).toLocaleTimeString('en-IN', {timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit'})} IST</>}</p>
+    {state && (state.prices || state.news || state.retry_after_seconds > 0) && <details className="fetch-result" open={state.status === 'partial' || state.status === 'failed' || undefined}>
+      <summary>Fetch details</summary>
         {state.prices && <p className={state.prices.status === 'failed' ? 'negative' : ''}>Prices: {state.prices.detail}</p>}
         {state.news && <p className={state.news.status === 'failed' ? 'negative' : ''}>News: {state.news.detail}</p>}
-        {!state.busy && state.retry_after_seconds > 0 && <small>Ready to fetch again in {state.retry_after_seconds} seconds.</small>}
-      </>}
-    </div>
+        {!state.busy && state.retry_after_seconds > 0 && <small>Next fetch in {state.retry_after_seconds}s.</small>}
+    </details>}
   </section>;
 }

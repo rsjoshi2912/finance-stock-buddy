@@ -74,7 +74,8 @@ def test_telegram_escapes_imported_content_and_keeps_all_ten_calls(session):
             def handle_starttag(self, tag, attrs):
                 assert tag == 'b' and not attrs
         Tags().feed(message)
-    assert 'unverified' in morning(data) and 'no call/put entry' in morning(data)
+    assert 'uncalibrated rule scores' in morning(data) and 'indices scored for direction only' in morning(data)
+    assert 'KEEP IN MIND' not in morning(data)
     with pytest.raises(ValueError): validate('🟢' * 2001)
 
 

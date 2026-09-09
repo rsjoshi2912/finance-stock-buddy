@@ -1,0 +1,21 @@
+# Keep the local graph focused on authored source and documentation.
+# In particular, do not ingest private runtime data or generated bundles.
+data/**
+frontend/node_modules/**
+frontend/dist/**
+frontend/test-results/**
+frontend/playwright-report/**
+graphify-out/**
+.venv/**
+.secrets/**
+.runtime/**
+.deploy/**
+.git/**
+.env
+.env.*
+*.env
+*.key
+*.pem
+__pycache__
+.pytest_cache
+*.tsbuildinfo

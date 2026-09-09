@@ -4,7 +4,10 @@ import math
 from datetime import datetime, timezone
 from statistics import stdev
 from sqlalchemy import select
-from .models import Evidence, Instrument, Prediction, Price, Resolution
+from .models import Evidence, Instrument, Prediction, Price, Resolution, Setting
+
+MAX_DAILY_CALLS = 10
+SELECTION_POLICY = 'ranked_available_v1'
 
 def utcstamp(value):
     parsed = datetime.fromisoformat(value)
@@ -47,10 +50,10 @@ def capped_judge_probability(model_probability, proposed, event_impact=0):
     return max(0.01, min(0.99, max(model_probability-bound, min(model_probability+bound, proposed))))
 
 class InsufficientCandidates(ValueError):
-    """Controlled diagnostic; contains only candidate counts, never provider secrets."""
+    """An empty eligible universe, not a missing direction quota."""
     def __init__(self, buy, sell):
         self.buy, self.sell = buy, sell
-        super().__init__(f'Only {buy} Buy and {sell} Sell candidates qualified. The daily batch needs at least 5 of each; no calls were published.')
+        super().__init__('No eligible candidates were available at the 07:00 IST cutoff. No calls were published.')
 
 
 def daily_candidates(session, day, *, synthetic=False, required_price_date=None):
@@ -91,18 +94,18 @@ def daily_candidates(session, day, *, synthetic=False, required_price_date=None)
 
 
 def make_daily_calls(session, day, *, synthetic=False, model_name='momentum_research_v1', required_price_date=None):
+    """Rank available candidates across both directions; never rerank a saved day."""
     if session.scalar(select(Prediction.id).where(Prediction.date == day, Prediction.model_version == model_name).limit(1)):
         return 0
     candidates = daily_candidates(session, day, synthetic=synthetic, required_price_date=required_price_date)
     buy = sum(row['direction'] == 'UP' for _, row in candidates)
     sell = sum(row['direction'] == 'DOWN' for _, row in candidates)
-    if buy < 5 or sell < 5: raise InsufficientCandidates(buy, sell)
-    picked = []
-    for direction in ('UP','DOWN'):
-        rows = sorted((x for x in candidates if x[1]['direction']==direction), key=lambda x:x[0], reverse=True)[:5]
-        for rank,(_,row) in enumerate(rows,1):
-            row['rank']=rank
-            picked.append(row['symbol'])
+    if not candidates: raise InsufficientCandidates(buy, sell)
+    # Keep the existing ten-position exposure ceiling, not a ten-position minimum.
+    # Symbol is a deterministic tie-breaker; no direction is forced or preferred.
+    picked = sorted(candidates, key=lambda item: (-item[0], item[1]['symbol']))[:MAX_DAILY_CALLS]
+    for rank, (_, row) in enumerate(picked, 1):
+        row['rank'] = rank
     for _,row in candidates:
         session.add(Prediction(**row,model_version=model_name))
         for baseline in ('baseline_always_up','baseline_momentum_5d'):
@@ -110,6 +113,15 @@ def make_daily_calls(session, day, *, synthetic=False, model_name='momentum_rese
             if baseline == 'baseline_always_up':
                 base.update(direction='UP',prob_up=.53,rationale='Fixed reference: always predict up with 53% probability. This is a benchmark setting, not a verified market statistic.')
             session.add(Prediction(**base,model_version=baseline))
+    # Separate selection metadata makes the new policy identifiable without changing
+    # the price rule's version or adding/replacing any historical prediction rows.
+    key = f'daily_selection:{day}'
+    if not session.get(Setting, key):
+        session.add(Setting(key=key, value=json.dumps(dict(policy=SELECTION_POLICY,
+            limit=MAX_DAILY_CALLS, available_buy=buy, available_sell=sell,
+            selected_buy=sum(row['direction'] == 'UP' for _, row in picked),
+            selected_sell=sum(row['direction'] == 'DOWN' for _, row in picked),
+            recorded_at=datetime.now(timezone.utc).isoformat(timespec='seconds')))))
     session.flush()
     return len(picked)
 
