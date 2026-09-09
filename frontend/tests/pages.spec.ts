@@ -97,7 +97,7 @@ test('index learning limits, clear examples and formatted Telegram preview', asy
   await expect(page.locator('.brief-text')).not.toContainText('<b>');
   await page.keyboard.press('Escape');
   await page.getByRole('button', {name: 'Index lab', exact: true}).click();
-  await expect(page.getByText('No live option signal', {exact: true})).toBeVisible();
+  await expect(page.getByText('Paper signals · no real orders', {exact: true})).toBeVisible();
   await page.getByRole('button', {name: 'Try an example'}).click();
   await expect(page.getByText('Skip: one lot exceeds a limit')).toBeVisible();
   await expect(page.getByTestId('option-funding')).toHaveText('₹5,260.00');
@@ -113,5 +113,48 @@ test('index learning limits, clear examples and formatted Telegram preview', asy
   await page.setViewportSize({width:390,height:844});
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({path:'../data/index-lab-mobile.png',fullPage:true});
+  expect(errors).toEqual([]);
+});
+
+test('index research separates direction from options, expires old actions and refreshes on demand', async ({page}) => {
+  const errors: string[]=[]; page.on('pageerror', e=>errors.push(e.message));
+  let requests=0, readsAfterRefresh=0;
+  await page.route('**/api/indices', route=>{
+    if(requests) readsAfterRefresh++;
+    const busy=requests>0 && readsAfterRefresh===1;
+    const now=new Date().toISOString();
+    return route.fulfill({json:{can_fetch:true,server_time:now,option_provider:'none',notice:'Fixture research data. Not live market data.',
+      limits:{capital:10000,risk:100},history:[],
+      refresh:{busy,status:busy?'running':requests?'complete':'idle',message:busy?'Checking Nifty and Bank Nifty…':requests?'Index checks saved.':'',retry_after_seconds:requests&&!busy?60:0},
+      indices:[{symbol:'NIFTY',name:'Nifty 50',direction:'UP',reason:'Fixture breakout and retest.',price:21070,
+        opening_high:21050,opening_low:21000,trend:'Rising',invalidation:21048,candle_at:now,assessed_at:now,
+        valid_until:new Date(Date.now()+300000).toISOString(),option:{action:'SKIP',reason:'Connect an option feed.'}},
+        {symbol:'BANKNIFTY',name:'Bank Nifty',direction:'DOWN',reason:'Expired fixture.',price:50000,
+        candle_at:now,assessed_at:now,valid_until:'2020-01-01T00:00:00Z',option:{action:'BUY_PUT',reason:'Old candidate.',valid_until:'2020-01-01T00:00:00Z'}}]}});
+  });
+  await page.route('**/api/indices/refresh', route=>{requests++;return route.fulfill({status:202,json:{status:'queued'}})});
+  await page.goto('./');
+  await page.getByLabel('Password').fill('pages-browser-fixture-only');
+  await page.getByRole('button',{name:'Open my journal'}).click();
+  await page.getByRole('button',{name:'Index lab',exact:true}).click();
+  const nifty=page.locator('.index-signal-card').filter({has:page.getByRole('heading',{name:'Nifty 50',exact:true})});
+  const bank=page.locator('.index-signal-card').filter({has:page.getByRole('heading',{name:'Bank Nifty',exact:true})});
+  await expect(nifty.getByText('Up bias',{exact:true})).toBeVisible();
+  await expect(nifty.getByText('Skip option',{exact:true})).toBeVisible();
+  await expect(nifty.getByText(/Idea fails below/)).toBeVisible();
+  await expect(bank.getByText('Skip',{exact:true})).toBeVisible();
+  await expect(bank.getByText('This setup has expired. Fetch a new check.')).toBeVisible();
+  await expect(page.getByText('Buy put · paper',{exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Refresh index signals'}).click();
+  await expect(page.getByRole('button',{name:'Checking indices…'})).toBeDisabled();
+  await expect(page.locator('.index-fetch-message')).toContainText('Index checks saved.',{timeout:10000});
+  await expect(page.getByRole('button',{name:'Refresh index signals'})).toBeDisabled();
+  expect(requests).toBe(1);
+  await page.getByRole('button',{name:'Preview index Telegram note'}).click();
+  await expect(page.locator('.index-note-preview strong').first()).toHaveText('NIFTY SIGNAL · INDEX CHECK');
+  await page.screenshot({path:'../data/index-signals-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:'../data/index-signals-mobile.png',fullPage:true});
   expect(errors).toEqual([]);
 });

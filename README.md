@@ -10,7 +10,7 @@ A private market learning journal for Ravi. Ten daily direction calls, every res
 
 **Prediction knowledge:** [KNOWLEDGE_PLAN.md](KNOWLEDGE_PLAN.md) defines the news, company-event and historical-reaction layer, including how we will test whether it improves the price-only baseline. Its record-keeping half (event notes, reactions, comparable history) is running; the evaluated challenger that could earn influence is not.
 
-**Resume work:** [MEMORY.md](MEMORY.md) records the latest handoff; [AGENTS.md](AGENTS.md) is the agent entry point. [INDEX_PLAN.md](INDEX_PLAN.md) covers the new option research screen and the data still needed for call/put signals.
+**Resume work:** [MEMORY.md](MEMORY.md) records the latest handoff; [AGENTS.md](AGENTS.md) is the agent entry point. [INDEX_PLAN.md](INDEX_PLAN.md) covers the index paper-signal rule, option-feed gates and remaining validation.
 
 ## Run it
 
@@ -116,7 +116,7 @@ The following are **not running** and must not be presented as complete:
 3. A configured and evaluated LLM provider; strict per-agent JSON validation and provenance; scored helper weights; automatic safe fallback and actual spend accounting. Token reservation and the future writer contract are supplied, but no provider call is active.
 4. A trained/calibrated champion, weekly retraining and promotion integrated into daily forecasts, reliable event-conditioned scorecards, and validated confidence thresholds.
 5. Backup retention/recovery rehearsal, continued resource monitoring, PostgreSQL verification and delivery monitoring. The SQLite VM API/worker, Telegram configuration, HTTPS and Pages are deployed. See DEPLOYMENT.md.
-6. Validated intraday F&O signals and an option-price simulator. Index lab currently provides a one-lot learning calculator and proposed research rules only; a cash gate cannot validate options. **No live-order integration is present or planned for this educational version.**
+6. Validated intraday F&O signals and an option-price simulator. Index lab provides unvalidated opening-range/retest direction checks, a separate optional Call/Put paper gate and a one-lot calculator. Option entries stay Skip without a verified quote source; a cash gate cannot validate options. **No live-order integration is present or planned for this educational version.**
 
 ## Checks
 
@@ -130,14 +130,14 @@ npm run test:e2e
 
 Browser checks require Google Chrome and the API at port 8000. They exercise page navigation, saved-call details, date and wrong-call filters, stock search, note previews, and responsive layouts. Screenshots are saved to `data/screenshot-desktop.png` and `data/screenshot-mobile.png`.
 
-Verified at review: **74 inherited backend tests passed. The reviewed changes add regression checks for record-time cutoffs, missing sessions, negation, message escaping and provider cleanup, plus an Index lab browser check. See MEMORY.md for the latest completed check counts and deployment status.** The event tests cover corrected articles, ambiguous company names, missing expectations, the publication-to-session boundary, gap versus open-to-close reactions, cutoff-limited comparisons, syndicated duplicates and the absence of any path from notes into the daily rule. See PUBLIC_DATA.md for real-source verification. The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the four isolated hosted-page checks. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
+Verified at review: **74 inherited backend tests passed. The reviewed changes add regression checks for record-time cutoffs, missing sessions, negation, message escaping and provider cleanup, plus an Index lab browser check. See MEMORY.md for the latest completed check counts and deployment status.** The event tests cover corrected articles, ambiguous company names, missing expectations, the publication-to-session boundary, gap versus open-to-close reactions, cutoff-limited comparisons, syndicated duplicates and the absence of any path from notes into the daily rule. See PUBLIC_DATA.md for real-source verification. The browser checks include a nested Pages path, cross-origin sign-in, authenticated export and stale quote display. Run `.venv/bin/python scripts/check_pages.py` from the root for the isolated hosted-page checks, including index refresh and expiry. The optional ML runtime and PostgreSQL deployment are not covered by those checks.
 
 The frozen ten-day integration fixture expects **−₹150** for the model and **+₹850** for simply buying, with **50 of 100** calls right. This known losing example checks selection, resolution, costs, direction scoring, and message generation through the same functions used by the app.
 
 ## Project map
 
 - `CONTEXT.md` — original requirements and approved clarifications.
-- `frontend/src/App.tsx`, `styles.css` — journal pages and responsive design; `IndexLab.tsx` adds option research.
+- `frontend/src/App.tsx`, `styles.css` — journal pages and responsive design; `IndexLab.tsx` and `IndexSignals.tsx` add the index checks and calculator.
 - `backend/app/engine.py` — cutoff readers, calls, outcomes, P&L and promotion gate.
 - `backend/app/analytics.py` — the common source for website scorecards.
 - `backend/app/models.py`, `db.py`, `schema.sql` — database and immutability controls.
@@ -148,3 +148,5 @@ The frozen ten-day integration fixture expects **−₹150** for the model and *
 - `deploy/` — reviewable hosting templates; not installed services.
 
 Keep this private. Use `.env` for secrets and never add it to version control. The local server binds to loopback. For remote use, complete authentication and HTTPS setup before exposing it.
+
+Index paper research: see INDEX_PLAN.md for strategy `index_orb_retest_v1`, timing and risk assumptions. Yahoo index checks need no broker key. The default `INDEX_OPTION_PROVIDER=none` deliberately leaves option entries at Skip. `backend/app/index_sources.py`, `index_research.py`, `index_options.py` and `index_jobs.py` own this workflow independently of daily cash predictions. Current implementation does not track executed positions or resolve option outcomes.

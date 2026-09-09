@@ -198,3 +198,30 @@ class EventOutcome(Base):
     benchmark_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     bars_available_at: Mapped[str] = mapped_column(String(32))
     recorded_at: Mapped[str] = mapped_column(String(32))
+
+class IndexCandle(Base):
+    """Five-minute observations, separate from cash daily prices; corrections append a revision."""
+    __tablename__ = 'index_candles'
+    __table_args__ = (UniqueConstraint('symbol', 'source', 'start_at', 'received_at', 'content_hash'),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(20), index=True)
+    source: Mapped[str] = mapped_column(String(40))
+    start_at: Mapped[str] = mapped_column(String(32), index=True)
+    end_at: Mapped[str] = mapped_column(String(32))
+    open: Mapped[float] = mapped_column(Float)
+    high: Mapped[float] = mapped_column(Float)
+    low: Mapped[float] = mapped_column(Float)
+    close: Mapped[float] = mapped_column(Float)
+    received_at: Mapped[str] = mapped_column(String(32))
+    content_hash: Mapped[str] = mapped_column(String(64))
+
+class IndexAssessment(Base):
+    """An immutable paper read made now, never a backfilled prediction."""
+    __tablename__ = 'index_assessments'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(20), index=True)
+    assessed_at: Mapped[str] = mapped_column(String(32), index=True)
+    candle_at: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    direction: Mapped[str] = mapped_column(String(10))
+    option_action: Mapped[str] = mapped_column(String(20))
+    payload: Mapped[str] = mapped_column(Text)

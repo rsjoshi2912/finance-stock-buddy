@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import IndexSignals from './IndexSignals';
 import { ArrowDownRight, ArrowUpRight, Calculator, CirclePause, Info } from 'lucide-react';
 
 const rupees = (value: number) => `₹${value.toLocaleString('en-IN', {maximumFractionDigits: 2, minimumFractionDigits: 2})}`;
@@ -33,15 +34,15 @@ export default function IndexLab() {
     {label: 'Units in one lot', value: lot, change: setLot, integer: true},
     {label: 'Fees + slippage buffer (₹ per lot, round trip)', value: cost, change: setCost},
   ];
-  return <div className="index-lab">
-    <section className="panel index-status"><div><span className="badge amber"><CirclePause size={13}/> No live option signal</span>
+  return <div className="index-lab"><IndexSignals/>
+    <section className="panel index-status"><div><span className="badge amber"><CirclePause size={13}/> Understand the method</span>
       <h2>Study the trade before risking the money.</h2><p>Start with Nifty 50. A rise in the index does not guarantee a profit on a call: its price also changes with time, volatility and the buy/sell spread.</p></div>
-      <p className="index-status-note">Live option quotes, contract checks and a tested entry rule are still needed. Today’s stock calls do not trigger option trades.</p></section>
+      <p className="index-status-note">The index rule runs on completed five-minute candles. Option candidates also need a current contract and quote. Today’s stock calls do not trigger option trades.</p></section>
     <div className="two-columns index-methods">
-      <section className="panel"><h3><ArrowUpRight size={18}/> Call idea to test</h3><p>After 09:30 IST, study a break above the first 15 minutes’ high, followed by a retest that holds. Require a rising short-term trend and a liquid option near the index level.</p></section>
+      <section className="panel"><h3><ArrowUpRight size={18}/> Call idea to test</h3><p>After 09:40 IST, study a break above the first 15 minutes’ high, followed by a retest that holds. Require a rising short-term trend and a liquid option near the index level.</p></section>
       <section className="panel"><h3><ArrowDownRight size={18}/> Put idea to test</h3><p>Study a break below the first 15 minutes’ low, followed by a retest that fails to recover. Require a falling short-term trend. Skip sideways markets, wide spreads and stale prices.</p></section>
     </div>
-    <p className="quote-note">These are proposed research rules, not working signals or proven methods. Expiry sessions and major scheduled news need separate testing.</p>
+    <p className="quote-note">The paper rule checks an opening-range break and the immediately following five-minute retest, with a matching 20/50-period trend. It is not a proven method. Expiry sessions and major scheduled news need separate testing.</p>
     <section className="panel"><div className="panel-head"><div><h2><Calculator size={17}/> Does one lot fit?</h2><p>Buying a call or put only. All prices below are your assumptions.</p></div>
       <button className="button secondary small" onClick={() => {setEntry('80'); setStop('70'); setTarget('100'); setLot('65'); setCost('60'); setExample(true);}}>Try an example</button></div>
       <div className="index-calculator">
@@ -69,7 +70,7 @@ export default function IndexLab() {
         </div>
       </div>
     </section>
-    <section className="panel index-next"><h3>Before “buy call” or “buy put” can appear</h3><ol>
+    <section className="panel index-next"><h3>Before considering real-money trading</h3><ol>
       <li>Connect fresh index candles and a permitted option feed with bid, ask, volume, expiry and current lot sizes.</li>
       <li>Record each paper entry and exit using option prices, including costs and worse fills. Keep skipped trades and losses.</li>
       <li>Test on later sessions the rule has never seen. Compare net profit, drawdown and losing streaks, then forward-test.</li>

@@ -1,5 +1,6 @@
 """Concise Telegram HTML made only from saved journal records."""
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from html import escape
 from html.parser import HTMLParser
 
@@ -95,4 +96,26 @@ def evening(data):
               f'Largest fall from a peak ₹{summary["max_drawdown"]:,.2f}', '',
               'Paper results after assumed costs; personal income tax excluded.',
               'A right direction can still lose after costs. No rule changes were applied.']
+    return validate('\n'.join(lines))
+
+
+def indices(data):
+    lines=['<b>NIFTY SIGNAL · INDEX CHECK</b>', 'Paper research · unvalidated · no orders', '']
+    for row in data['indices']:
+        direction={'UP':'UP BIAS','DOWN':'DOWN BIAS','SKIP':'SKIP'}[row['direction']]
+        option=row['option']
+        action={'BUY_CALL':'BUY CALL · PAPER','BUY_PUT':'BUY PUT · PAPER','SKIP':'SKIP OPTION'}[option['action']]
+        checked = datetime.fromisoformat(row['assessed_at']).astimezone(ZoneInfo('Asia/Kolkata')).strftime('%d %b %H:%M:%S IST') if row.get('assessed_at') else 'No saved check'
+        lines += [f'<b>{clean(row["name"])} · {direction}</b>',clean(row['reason'],200),
+                  f'Checked: {clean(checked,40)}',
+                  f'<b>{action}</b>',clean(option['reason'],200)]
+        if option.get('contract'):
+            lines.append(clean(option['contract']['name'],100))
+        if option.get('entry') is not None:
+            lines += [f'Paper entry ₹{option["entry"]:,.2f} · stop ₹{option["stop"]:,.2f} · target ₹{option["target"]:,.2f}',
+                      f'1 lot · planned loss ₹{option["planned_loss"]:,.2f} · full premium + buffer ₹{option["premium_at_risk"]:,.2f}']
+        lines.append('')
+    lines += ['Source: Yahoo five-minute candles; may be delayed. News is not used by this rule.',
+              'An index direction is not a guaranteed option profit. Stops can fill worse than planned.',
+              'Snapshot only. Open Index lab for current expiry and source status.']
     return validate('\n'.join(lines))

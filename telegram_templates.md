@@ -31,6 +31,6 @@ Indices: direction only, no call/put entry. Prices and source links are in the j
 
 An evening note leads with net paper result, simply-buying result and their difference. It then lists every right, wrong and flat call, includes concise explanations for misses, names pending results and labels incomplete totals. It ends with cumulative results, best/worst day and largest fall from a peak. A correct direction can still lose after costs. Sample notes prominently say SAMPLE DATA.
 
-No index-option alerts are sent by the Index lab. Its calculator uses user-entered assumptions, not a live contract feed.
+Index lab has a separate owner-only preview at `GET /api/indices/brief`: **INDEX CHECK**, paper status, Nifty / Bank Nifty direction, short reason, check time in IST and Call / Put / Skip. Validated contract details and illustrative premium levels appear when available. Text is escaped and kept under the existing parsed-message limit. No automatic index alerts are sent. The learning calculator remains separate and uses user-entered assumptions.
 
 Formatting reference: [Telegram Bot API](https://core.telegram.org/bots/api#formatting-options).

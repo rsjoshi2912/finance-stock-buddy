@@ -180,3 +180,7 @@ Step 2 of KNOWLEDGE_PLAN.md is implemented. Each collected article that names a 
 ## 16. Review, options research and handoff (2026-09-08)
 
 The owner requested review of the intervening agent’s work, concise formatted Telegram notes and a simple index-option workflow. See MEMORY.md for the durable handoff, telegram_templates.md for the implemented HTML message contract and INDEX_PLAN.md for proposed Nifty/Bank Nifty research. The Index lab calculator is educational; no real-time call/put strategy, income guarantee or order execution is enabled. News comparison and calendar bugs found in review were corrected without rewriting earlier notes or calls.
+
+## 17. Index paper research approved (2026-09-09)
+
+The owner explicitly approved adding actual Nifty / Bank Nifty Up, Down or Skip checks and separate Call / Put / Skip paper assessments to Index lab. This supersedes the earlier calculator-only description, but does not authorize real orders or establish profitability. INDEX_PLAN.md documents the implemented price-only rule, source/expiry checks, optional read-only broker adapter and missing outcome evaluation. Public Yahoo candles are the default; option entries remain Skip without a configured, verified quote source. Memory must be checkpointed during substantial work, not only at the end of a session.

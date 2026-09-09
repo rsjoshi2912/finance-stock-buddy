@@ -6,7 +6,7 @@ class Base(DeclarativeBase):
     pass
 
 # Rows in these tables are historical records. They are written once and never changed.
-FROZEN_TABLES = ('predictions', 'resolutions', 'event_assessments', 'event_outcomes')
+FROZEN_TABLES = ('predictions', 'resolutions', 'event_assessments', 'event_outcomes', 'index_candles', 'index_assessments')
 
 def build_engine(url=DATABASE_URL):
     ROOT.joinpath('data').mkdir(exist_ok=True)

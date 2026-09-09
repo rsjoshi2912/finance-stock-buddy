@@ -22,6 +22,41 @@ CREATE TABLE improvements (
 	PRIMARY KEY (id)
 );
 
+CREATE TABLE index_assessments (
+	id SERIAL NOT NULL,
+	symbol VARCHAR(20) NOT NULL,
+	assessed_at VARCHAR(32) NOT NULL,
+	candle_at VARCHAR(32),
+	direction VARCHAR(10) NOT NULL,
+	option_action VARCHAR(20) NOT NULL,
+	payload TEXT NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_index_assessments_assessed_at ON index_assessments (assessed_at);
+
+CREATE INDEX ix_index_assessments_symbol ON index_assessments (symbol);
+
+CREATE TABLE index_candles (
+	id SERIAL NOT NULL,
+	symbol VARCHAR(20) NOT NULL,
+	source VARCHAR(40) NOT NULL,
+	start_at VARCHAR(32) NOT NULL,
+	end_at VARCHAR(32) NOT NULL,
+	open FLOAT NOT NULL,
+	high FLOAT NOT NULL,
+	low FLOAT NOT NULL,
+	close FLOAT NOT NULL,
+	received_at VARCHAR(32) NOT NULL,
+	content_hash VARCHAR(64) NOT NULL,
+	PRIMARY KEY (id),
+	UNIQUE (symbol, source, start_at, received_at, content_hash)
+);
+
+CREATE INDEX ix_index_candles_start_at ON index_candles (start_at);
+
+CREATE INDEX ix_index_candles_symbol ON index_candles (symbol);
+
 CREATE TABLE instruments (
 	symbol VARCHAR(30) NOT NULL,
 	name VARCHAR(120) NOT NULL,
@@ -121,9 +156,9 @@ CREATE TABLE event_assessments (
 	FOREIGN KEY(symbol) REFERENCES instruments (symbol)
 );
 
-CREATE INDEX ix_event_assessments_symbol ON event_assessments (symbol);
-
 CREATE INDEX ix_event_assessments_article_id ON event_assessments (article_id);
+
+CREATE INDEX ix_event_assessments_symbol ON event_assessments (symbol);
 
 CREATE TABLE instrument_mappings (
 	symbol VARCHAR(30) NOT NULL,
@@ -238,3 +273,7 @@ CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON resolutions FOR EACH 
 CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON event_assessments FOR EACH ROW EXECUTE FUNCTION reject_record_change();
 
 CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON event_outcomes FOR EACH ROW EXECUTE FUNCTION reject_record_change();
+
+CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON index_candles FOR EACH ROW EXECUTE FUNCTION reject_record_change();
+
+CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON index_assessments FOR EACH ROW EXECUTE FUNCTION reject_record_change();

@@ -1,5 +1,18 @@
 # Project handoff
 
+## Active checkpoint — 2026-09-09 (index paper signals, ready for deployment)
+
+The owner resumed work and explicitly requested frequent file-based handoffs before session limits. Keep this section current after major checkpoints; an abrupt quota limit cannot be predicted. All local files must remain in this project directory.
+
+The current uncommitted changes add Nifty / Bank Nifty Up, Down or Skip research checks, a separate Buy Call / Buy Put / Skip paper gate, immutable five-minute candles and assessments, owner-only on-demand refresh, a five-minute worker schedule, formatted Telegram preview (no automatic index send), and the Index lab interface. See new index_sources.py, index_research.py, index_options.py, index_jobs.py, IndexSignals.tsx and test_indices.py. The strategy uses a completed 15-minute opening range, immediate breakout/retest and EMA20/50 with 150 consecutive verified candles; stale, missing or out-of-session data gives Skip. There is no proven accuracy, fill simulation or order execution.
+
+Yahoo is the default index price source. A real source check returned 375 five-minute bars each for Nifty and Bank Nifty, through September 8 close. Option quotes require the optional read-only Upstox contract + full-quote adapter, tested with mocks only; default provider is none, so option action stays Skip. Default paper capital is ₹10,000, 1% planned loss budget and ₹60 assumed costs. Contract identity, actual lot size, quote age, spread, depth, funding and risk must all pass. News is not used by this index strategy.
+
+Latest resumed-session verification: 107 backend tests and five isolated hosted browser checks passed; the frontend built successfully. Desktop/mobile screenshots are in ignored data/index-signals-{desktop,mobile}.png. The invalid option serialization fix, direction-specific wording and IST preview are implemented. Schema, example settings and documentation are synchronized. A final review additionally fixed provider candle reversions (A → B → A must append the last observation), with coverage; the final backend run passed all 107 tests after that fix. The actual September 9 collection saved 636 completed Yahoo candles (318 each) to an isolated DB; both checks correctly returned Skip because the pattern was absent. Production frontend build passed. graphify update completed with 1,252 nodes / 4,034 edges / 36 communities. Git whitespace checks passed. Oracle preflight confirmed f3de0b7 and all three services active, with 336 MB available memory and 24 GB disk free. These changes are NOT committed or live. The last deployed application remains f3de0b7, with docs commit 8b0215c afterward. The earlier usage-limit rejection is resolved in this resumed session.
+
+Next steps: inspect staged files for secrets; commit/push, back up and deploy Oracle, confirm Pages and live owner-only index refresh. Preserve daily cash calls and all existing data. Never send Telegram messages merely to test formatting. Update this checkpoint after verification and deployment.
+
+
 Updated 2026-09-08, following review of the second agent's work. Read current Git status and `DEPLOYMENT.md` before resuming. This document contains no secrets. See `CONTEXT.md` for the full original brief and subsequent decisions.
 
 ## Purpose and owner decisions
@@ -9,7 +22,7 @@ Updated 2026-09-08, following review of the second agent's work. Read current Gi
 - Predictions and one-time resolutions are immutable. Check both publication and actual receipt times. Historical imports must not fabricate prior live calls. Index calls get direction scores, no pretend stock-position money. Stops are alerts, not simulated fills.
 - Free/public data first. Yahoo via yfinance; ET Markets, LiveMint Markets/Companies and RBI RSS. Upstox adapter exists but is not production-verified. Other broker APIs later.
 - The five-day momentum rule is uncalibrated. News records and keyword labels have zero influence on daily probabilities. Optional LightGBM/FinBERT code is not an evaluated model or installed production runtime.
-- New request: review another agent's changes, improve Telegram formatting and usability, and examine Nifty/Bank Nifty options with small capital. `INDEX_PLAN.md` explains the proposed experiment. The implemented Index lab is a calculator and research explanation, not an option-signal engine.
+- New request: review another agent's changes, improve Telegram formatting and usability, and examine Nifty/Bank Nifty options with small capital. `INDEX_PLAN.md` explains the proposed experiment. The prior deployed Index lab was a calculator; the active checkpoint above covers its newly approved paper engine.
 
 ## Work inherited and reviewed
 
@@ -59,7 +72,7 @@ Project directory: `/Users/ravjoshi/Desktop/codebases/finance-stock-buddy`. The 
 
 ## Remaining work
 
-1. No proven profitability, trained champion, option feed, intraday signal engine, option execution simulator or option Telegram alerts. The cash 60-day checkpoint does not validate F&O. See INDEX_PLAN.md for contract/data/validation requirements.
+1. No proven profitability, trained champion, production-verified option feed, option execution simulator, scored option outcomes or automatic option Telegram alerts. The cash 60-day checkpoint does not validate F&O. See INDEX_PLAN.md for contract/data/validation requirements.
 2. Current real starter universe is 20 stocks, not the full historically verified Nifty 500. Historical membership/re-entries, corporate-action reconciliation, long history and official exchange archives are still needed.
 3. News extraction is a conservative keyword placeholder, and story grouping is coarse. Expectations, official filings, intraday event studies and an evaluated news-plus-price challenger remain pending. Historical reaction is association, not proof of cause or tradable knowledge at publication.
 4. Ongoing monitoring, backup retention and recovery rehearsal need operational work. Keep heavy model work local. PostgreSQL and optional ML runtime remain unverified.

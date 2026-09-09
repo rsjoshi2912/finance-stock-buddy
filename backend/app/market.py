@@ -40,7 +40,7 @@ class Upstox:
 
     def get(self, path, params=None):
         # This client intentionally has no order or account endpoints.
-        if not path.startswith(('/v2/market/', '/v2/market-quote/', '/v3/historical-candle/')):
+        if path != '/v2/option/contract' and not path.startswith(('/v2/market/', '/v2/market-quote/', '/v3/historical-candle/')):
             raise MarketError('Only market-data endpoints are allowed.')
         try:
             response = self.client.get(BASE + path, params=params,

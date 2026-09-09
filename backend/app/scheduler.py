@@ -23,6 +23,8 @@ from .news import collect_news
 from .events import assess_new_articles, calendar_hours, record_outcomes
 from .fetch_lock import source_lock
 from .models import JobRun, Prediction, Resolution, ScheduledRun, Setting
+from .index_jobs import index_job_due
+from .index_research import collect_and_assess
 
 def due_jobs(current, hours):
     """No catch-up of missed morning calls or messages after their useful window."""
@@ -63,7 +65,7 @@ def execute_once(factory, key, task, current=None):
             session.rollback(); return False
     try:
         with factory() as session:
-            if key.split(':')[0] in ('history', 'quotes', 'close', 'news'):
+            if key.split(':')[0] in ('history', 'quotes', 'close', 'news', 'indices'):
                 with source_lock(session.get_bind()):
                     result = task(session)
                     session.commit()
@@ -155,6 +157,7 @@ def tick(provider, current=None, factory=SessionLocal):
         session.execute(delete(JobRun).where(JobRun.job == 'quotes', JobRun.started_at < expired))
         session.commit()
     jobs = due_jobs(current, hours)
+    if os.getenv('INDEX_RESEARCH_ENABLED','true')=='true' and index_job_due(current,hours): jobs.append('indices')
     local = current.astimezone(IST)
     if os.getenv('NEWS_ENABLED', 'true') == 'true' and 6 <= local.hour < 20: jobs.append('news')
     if not hours.get('open') and getattr(provider, 'id', '') == 'yfinance' and local.weekday() < 5 and 9 <= local.hour < 16:
@@ -163,6 +166,7 @@ def tick(provider, current=None, factory=SessionLocal):
         suffix = day
         if job == 'quotes': suffix = str(int(current.timestamp() // getattr(provider, 'refresh_seconds', 15)))
         if job == 'news': suffix = str(int(current.timestamp() // 300))
+        if job == 'indices': suffix = str(int(current.timestamp() // 300))
         if job == 'close': suffix = f'{day}:{current.astimezone(IST).minute // 15}:{current.astimezone(IST).hour}'
         actions = {
             'history': lambda s: load_history(s, provider, day),
@@ -172,6 +176,7 @@ def tick(provider, current=None, factory=SessionLocal):
             'morning': lambda s: deliver(s, day, 'morning'),
             'evening': lambda s: deliver(s, day, 'evening'),
             'news': lambda s: news_job(s, provider),
+            'indices': lambda s: collect_and_assess(s),
         }
         execute_once(factory, f'{job}:{suffix}', actions[job], current)
     return jobs

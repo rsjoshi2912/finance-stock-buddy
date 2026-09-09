@@ -20,6 +20,8 @@ from .refresh import request_refresh, refresh_status, run_refresh, RefreshCooldo
 from .market import MarketError,create_provider
 from .events import EFFECTS,EVENT_TYPES,calendar_hours,event_notes,history_summary,note_payload,record_owner_assessment
 from .models import NewsArticle
+from .index_research import snapshot as index_snapshot
+from .index_jobs import REFRESH_KEY as INDEX_REFRESH_KEY, run_index_refresh
 
 FRONTEND_ORIGINS=[x.strip().rstrip('/') for x in os.getenv('FRONTEND_ORIGINS','').split(',') if x.strip()]
 if '*' in FRONTEND_ORIGINS:raise ValueError('FRONTEND_ORIGINS must list exact origins, never a wildcard')
@@ -69,6 +71,27 @@ def check_session():
 @app.get('/api/quotes')
 def quotes(session:Session=Depends(session_dependency)):
     return quote_snapshot(session)
+
+@app.get('/api/indices')
+def indices(session:Session=Depends(session_dependency)):
+    result=index_snapshot(session)
+    result['refresh']=refresh_status(session,key=INDEX_REFRESH_KEY)
+    result['can_fetch']=MODE=='live'
+    return result
+
+@app.post('/api/indices/refresh',status_code=202)
+def refresh_indices(background_tasks:BackgroundTasks,session:Session=Depends(session_dependency)):
+    try:state,started=request_refresh(session,key=INDEX_REFRESH_KEY)
+    except RefreshCooldown as error:
+        raise HTTPException(429,str(error),headers={'Retry-After':str(error.seconds)}) from None
+    except MarketError as error:raise HTTPException(409,str(error)) from None
+    if started:background_tasks.add_task(run_index_refresh,state['id'])
+    return state
+
+@app.get('/api/indices/brief')
+def index_brief(session:Session=Depends(session_dependency)):
+    message=briefs.indices(index_snapshot(session))
+    return dict(text=briefs.plain_text(message),html=message,parse_mode='HTML',sent=False)
 
 @app.get('/api/news')
 def news(session:Session=Depends(session_dependency)):

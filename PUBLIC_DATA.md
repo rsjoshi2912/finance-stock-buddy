@@ -81,3 +81,11 @@ The owner-authenticated API is `POST /api/refresh` with an empty JSON object; it
 This action fetches display quotes and news only. It does not import daily history, change or resolve saved predictions, place orders, or send Telegram messages. New observations retain their actual receipt times and cannot enter an earlier morning call.
 
 Verified: 65 backend tests and three hosted-page browser checks passed, including concurrent requests, partial failures, authentication, reload during progress and automatic panel updates. A real on-demand fetch was also exercised in the local preview.
+
+## Separate index research (2026-09-09)
+
+Index lab now collects actual five-minute Yahoo candles for Nifty 50 and Bank Nifty into their own immutable tables. A real access check returned 375 bars for each index through the September 8 close. This is observed availability, not a low-latency feed guarantee. Completed candle and receipt-time checks reject stale or missing inputs. Daily cash forecasts and the stock watchlist are unchanged.
+
+`GET /api/indices` returns current research cards, original saved checks and refresh status. `POST /api/indices/refresh` starts or joins an authenticated background check with a 60-second cooldown; it shares the source lock with other collection. `GET /api/indices/brief` previews HTML and plain text without sending. The worker checks every five minutes during verified exchange hours when `INDEX_RESEARCH_ENABLED=true`. Background refresh is process-local; interruptions use the existing stale-job recovery rather than a durable queue.
+
+No free option quote source has been production-verified. `INDEX_OPTION_PROVIDER=none` keeps entries at Skip. The optional existing Upstox adapter has mocked contract/quote tests, requires the owner's valid data access, and must be verified against real contract units before reliance. See INDEX_PLAN.md for the rule, configuration and remaining paper-outcome work.

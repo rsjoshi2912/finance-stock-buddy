@@ -38,17 +38,17 @@ def public_state(value, current=None):
     state['retry_after_seconds'] = max(0, math.ceil(COOLDOWN_SECONDS - (current - datetime.fromisoformat(finished)).total_seconds())) if finished else 0
     return state
 
-def refresh_status(session, current=None):
-    row = session.get(Setting, KEY)
+def refresh_status(session, current=None, *, key=KEY):
+    row = session.get(Setting, key)
     return public_state(json.loads(row.value) if row else None, current)
 
-def request_refresh(session, current=None):
+def request_refresh(session, current=None, *, key=KEY):
     current = current or current_time()
     mode = session.get(Setting, 'dataset_mode')
     if MODE != 'live' or not os.getenv('OWNER_PASSWORD') or not mode or mode.value != 'live':
         raise MarketError('Fetch latest is available in the configured live-data workspace.')
     for _ in range(3):
-        row = session.get(Setting, KEY, populate_existing=True)
+        row = session.get(Setting, key, populate_existing=True)
         raw = row.value if row else None
         state = public_state(json.loads(raw) if raw else None, current)
         if state['busy']: return state, False
@@ -58,23 +58,23 @@ def request_refresh(session, current=None):
             completed_at=None, stage='queued', message='Starting the fetch…', prices=None, news=None)
         encoded = json.dumps(value)
         if row:
-            claimed = session.execute(update(Setting).where(Setting.key == KEY, Setting.value == raw).values(value=encoded)).rowcount == 1
+            claimed = session.execute(update(Setting).where(Setting.key == key, Setting.value == raw).values(value=encoded)).rowcount == 1
             if claimed: session.commit(); return public_state(value, current), True
             session.rollback()
         else:
-            session.add(Setting(key=KEY, value=encoded))
+            session.add(Setting(key=key, value=encoded))
             try: session.commit(); return public_state(value, current), True
             except IntegrityError: session.rollback()
     raise MarketError('Another request changed the fetch state. Check the current progress.')
 
-def save_progress(factory, request_id, **changes):
+def save_progress(factory, request_id, *, key=KEY, **changes):
     with factory() as session:
-        row = session.get(Setting, KEY)
+        row = session.get(Setting, key)
         if not row: return False
         raw = row.value; value = json.loads(raw)
         if value['id'] != request_id: return False
         value.update(changes, updated_at=current_time().isoformat(timespec='seconds'))
-        changed = session.execute(update(Setting).where(Setting.key == KEY, Setting.value == raw).values(value=json.dumps(value))).rowcount == 1
+        changed = session.execute(update(Setting).where(Setting.key == key, Setting.value == raw).values(value=json.dumps(value))).rowcount == 1
         session.commit()
         return changed
 
